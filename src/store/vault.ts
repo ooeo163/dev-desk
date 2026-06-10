@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { dekToBase64, base64ToDek } from '@/lib/client-crypto';
+import { dekToBase64 } from '@/lib/client-crypto';
 
 interface VaultState {
   isUnlocked: boolean;
@@ -9,6 +9,7 @@ interface VaultState {
   lock: () => void;
   getDekBase64: () => string | null;
   setAutoLockTimeout: (ms: number) => void;
+  loadPersistedTimeout: () => Promise<void>;
 }
 
 export const useVaultStore = create<VaultState>((set, get) => ({
@@ -22,4 +23,9 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     return dek ? dekToBase64(dek) : null;
   },
   setAutoLockTimeout: (ms: number) => set({ autoLockTimeoutMs: ms }),
+  loadPersistedTimeout: async () => {
+    const { getSettings } = await import('@/actions/settings');
+    const { autoLockTimeout } = await getSettings();
+    set({ autoLockTimeoutMs: Number(autoLockTimeout) });
+  },
 }));

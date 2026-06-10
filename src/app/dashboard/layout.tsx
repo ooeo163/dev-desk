@@ -16,14 +16,17 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const isUnlocked = useVaultStore((s) => s.isUnlocked);
+  const loadPersistedTimeout = useVaultStore((s) => s.loadPersistedTimeout);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (!isUnlocked) {
       router.replace('/');
+    } else {
+      loadPersistedTimeout();
     }
-  }, [isUnlocked, router]);
+  }, [isUnlocked, router, loadPersistedTimeout]);
 
   // Auto-lock on idle
   useAutoLock();
