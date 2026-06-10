@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Plus, Search, KeyRound, User, Check, Key } from 'lucide-react';
+import { EmptyVault, EmptySearch } from '@/components/ui/illustrations';
 import { toast } from 'sonner';
 import { getCredentials, getCredentialById } from '@/actions/credentials';
 import { CredentialDialog } from '@/components/vault/credential-dialog';
@@ -176,11 +177,22 @@ export default function CredentialsPage() {
 
       {/* Credentials List */}
       {filtered.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center py-12">
-          <KeyRound className="mb-4 h-12 w-12 text-muted-foreground/50" />
-          <p className="text-muted-foreground">
-            {search || selectedTag ? '没有找到匹配的凭证' : '还没有凭证，点击"新建凭证"开始'}
-          </p>
+        <Card className="flex flex-col items-center justify-center py-16">
+          {search || selectedTag ? (
+            <>
+              <EmptySearch className="mb-4 h-20 w-20 text-muted-foreground/40" />
+              <p className="text-muted-foreground">没有找到匹配的凭证</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">试试其他关键词或清除筛选</p>
+            </>
+          ) : (
+            <>
+              <EmptyVault className="mb-4 h-24 w-24 text-muted-foreground/40" />
+              <p className="text-muted-foreground mb-4">还没有凭证，创建你的第一个</p>
+              <Button size="sm" onClick={handleCreate}>
+                <Plus className="mr-2 h-4 w-4" /> 新建凭证
+              </Button>
+            </>
+          )}
         </Card>
       ) : (
         <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">

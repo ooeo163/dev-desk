@@ -32,6 +32,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Plus, MoreVertical, Trash2, Pencil } from 'lucide-react';
+import { EmptyTodo, EmptyInProgress, EmptyDone } from '@/components/ui/illustrations';
 import { toast } from 'sonner';
 import { getTasks, updateTaskStatus, deleteTask } from '@/actions/tasks';
 import { TaskDialog } from '@/components/vault/task-dialog';
@@ -366,8 +367,14 @@ export default function TasksPage() {
                 <DroppableColumn statusKey={statusKey}>
                   {items.length === 0 ? (
                     <Card className="flex flex-col items-center justify-center py-8 gap-2">
-                      <Plus className="h-5 w-5 text-muted-foreground/40" />
-                      <p className="text-sm text-muted-foreground">暂无任务</p>
+                      {statusKey === 'todo' && <EmptyTodo className="h-14 w-14 text-muted-foreground/30" />}
+                      {statusKey === 'in_progress' && <EmptyInProgress className="h-14 w-14 text-muted-foreground/30" />}
+                      {statusKey === 'done' && <EmptyDone className="h-14 w-14 text-muted-foreground/30" />}
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {statusKey === 'todo' && '没有待办事项'}
+                        {statusKey === 'in_progress' && '没有进行中的任务'}
+                        {statusKey === 'done' && '还没有完成的任务'}
+                      </p>
                     </Card>
                   ) : (
                     items.map((task) => (

@@ -12,6 +12,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { KeyRound, CheckSquare, Plus, Lock, Sun, Moon } from 'lucide-react';
+import { EmptySearch } from '@/components/ui/illustrations';
 import { useTheme } from 'next-themes';
 import { useCommandPalette } from '@/hooks/use-command-palette';
 import { useVaultStore } from '@/store/vault';
@@ -86,7 +87,10 @@ export function CommandPalette({
     <CommandDialog open={isOpen} onOpenChange={setIsOpen}>
       <CommandInput placeholder="搜索凭证、任务或操作..." />
       <CommandList>
-        <CommandEmpty>没有找到结果</CommandEmpty>
+        <CommandEmpty>
+          <EmptySearch className="mx-auto h-12 w-12 text-muted-foreground/30 mb-2" />
+          没有找到结果
+        </CommandEmpty>
 
         <CommandGroup heading="操作">
           <CommandItem value="new-credential" onSelect={() => handleSelect('new-credential')}>
