@@ -20,35 +20,45 @@ import { getCredentials } from '@/actions/credentials';
 import { getTasks } from '@/actions/tasks';
 import { toast } from 'sonner';
 
-export function CommandPalette() {
+export function CommandPalette({
+  open,
+  onOpenChange,
+}: {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const lock = useVaultStore((s) => s.lock);
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
 
-  const toggle = useCallback(() => setOpen((prev) => !prev), []);
+  const isControlled = open !== undefined;
+  const isOpen = isControlled ? open : internalOpen;
+  const setIsOpen = isControlled ? onOpenChange! : setInternalOpen;
+
+  const toggle = useCallback(() => setIsOpen(!isOpen), [isOpen, setIsOpen]);
   useCommandPalette(toggle);
 
   const { data: credentials = [] } = useQuery({
     queryKey: ['credentials'],
     queryFn: getCredentials,
-    enabled: open,
+    enabled: isOpen,
   });
 
   const { data: tasks = [] } = useQuery({
     queryKey: ['tasks'],
     queryFn: () => getTasks(),
-    enabled: open,
+    enabled: isOpen,
   });
 
   function handleSelect(action: string) {
-    setOpen(false);
+    setIsOpen(false);
     switch (action) {
       case 'new-credential':
-        router.push('/dashboard/credentials');
+        router.push('/dashboard/credentials?action=create');
         break;
       case 'new-task':
-        router.push('/dashboard/tasks');
+        router.push('/dashboard/tasks?action=create');
         break;
       case 'lock':
         lock();
@@ -61,15 +71,17 @@ export function CommandPalette() {
         break;
       default:
         if (action.startsWith('cred:')) {
-          router.push('/dashboard/credentials');
+          const credId = action.slice(5);
+          router.push(`/dashboard/credentials?detail=${credId}`);
         } else if (action.startsWith('task:')) {
-          router.push('/dashboard/tasks');
+          const taskId = action.slice(5);
+          router.push(`/dashboard/tasks?detail=${taskId}`);
         }
     }
   }
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog open={isOpen} onOpenChange={setIsOpen}>
       <CommandInput placeholder="搜索凭证、任务或操作..." />
       <CommandList>
         <CommandEmpty>没有找到结果</CommandEmpty>

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +36,23 @@ export default function CredentialsPage() {
     queryKey: ['credentials'],
     queryFn: getCredentials,
   });
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    const action = searchParams.get('action');
+    const detail = searchParams.get('detail');
+    if (action === 'create') {
+      setEditCred(null);
+      setDialogOpen(true);
+      router.replace('/dashboard/credentials');
+    } else if (detail) {
+      setSelectedId(detail);
+      setDetailOpen(true);
+      router.replace('/dashboard/credentials');
+    }
+  }, [searchParams, router]);
 
   const { copy } = useClipboard();
   const [copyFeedback, setCopyFeedback] = useState<Record<string, true>>({});

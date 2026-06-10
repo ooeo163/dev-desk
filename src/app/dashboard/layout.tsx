@@ -19,6 +19,7 @@ export default function DashboardLayout({
   const loadPersistedTimeout = useVaultStore((s) => s.loadPersistedTimeout);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
 
   useEffect(() => {
     if (!isUnlocked) {
@@ -53,12 +54,15 @@ export default function DashboardLayout({
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header onMenuClick={() => setMobileOpen(true)} />
+        <Header
+          onMenuClick={() => setMobileOpen(true)}
+          onSearchClick={() => setCommandOpen(true)}
+        />
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
 
       {/* Command Palette */}
-      <CommandPalette />
+      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
     </div>
   );
 }

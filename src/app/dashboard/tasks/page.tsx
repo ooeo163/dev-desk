@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   DndContext,
   DragOverlay,
@@ -138,6 +139,26 @@ export default function TasksPage() {
     queryKey: ['tasks'],
     queryFn: () => getTasks(),
   });
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    const action = searchParams.get('action');
+    const detail = searchParams.get('detail');
+    if (action === 'create') {
+      setEditTask(null);
+      setDialogOpen(true);
+      router.replace('/dashboard/tasks');
+    } else if (detail) {
+      const task = tasks.find((t) => t.id === detail);
+      if (task) {
+        setSelectedTask(task);
+        setDetailOpen(true);
+        router.replace('/dashboard/tasks');
+      }
+    }
+  }, [searchParams, tasks, router]);
 
   const activeTask = activeId ? tasks.find((t) => t.id === activeId) ?? null : null;
 

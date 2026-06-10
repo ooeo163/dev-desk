@@ -81,8 +81,6 @@ export function TaskDetail({ task, open, onOpenChange, onEdit, onDelete, onStatu
           </div>
         </div>
 
-        <Separator />
-
         <div className="space-y-1">
           <p className="text-sm font-medium text-muted-foreground">状态</p>
           <div className="flex gap-2 items-end">
