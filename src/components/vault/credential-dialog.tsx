@@ -41,6 +41,8 @@ export function CredentialDialog({ open, onOpenChange, credential, existingTags 
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [showTotpSecret, setShowTotpSecret] = useState(false);
   const [title, setTitle] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -61,6 +63,8 @@ export function CredentialDialog({ open, onOpenChange, credential, existingTags 
       setNotes(credential?.notes ?? '');
       setTagInput('');
       setShowPassword(false);
+      setShowApiKey(false);
+      setShowTotpSecret(false);
       setLoading(false);
     }
   }, [open, credential]);
@@ -130,11 +134,13 @@ export function CredentialDialog({ open, onOpenChange, credential, existingTags 
     setTags([]);
     setTagInput('');
     setShowPassword(false);
+    setShowApiKey(false);
+    setShowTotpSecret(false);
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{isEdit ? '编辑凭证' : '新建凭证'}</DialogTitle>
           <DialogDescription>
@@ -186,6 +192,7 @@ export function CredentialDialog({ open, onOpenChange, credential, existingTags 
                 variant="outline"
                 size="icon"
                 onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? '隐藏密码' : '显示密码'}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
@@ -194,26 +201,50 @@ export function CredentialDialog({ open, onOpenChange, credential, existingTags 
 
           <div className="space-y-2">
             <Label htmlFor="cred-apikey">API Key</Label>
-            <Input
-              id="cred-apikey"
-              type={showPassword ? 'text' : 'password'}
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="API 密钥"
-              autoComplete="new-password"
-            />
+            <div className="flex gap-2">
+              <Input
+                id="cred-apikey"
+                type={showApiKey ? 'text' : 'password'}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="API 密钥"
+                className="flex-1"
+                autoComplete="new-password"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setShowApiKey(!showApiKey)}
+                aria-label={showApiKey ? '隐藏 API Key' : '显示 API Key'}
+              >
+                {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="cred-totp">TOTP Secret</Label>
-            <Input
-              id="cred-totp"
-              type={showPassword ? 'text' : 'password'}
-              value={totpSecret}
-              onChange={(e) => setTotpSecret(e.target.value)}
-              placeholder="TOTP 密钥 (Base32)"
-              autoComplete="new-password"
-            />
+            <div className="flex gap-2">
+              <Input
+                id="cred-totp"
+                type={showTotpSecret ? 'text' : 'password'}
+                value={totpSecret}
+                onChange={(e) => setTotpSecret(e.target.value)}
+                placeholder="TOTP 密钥 (Base32)"
+                className="flex-1"
+                autoComplete="new-password"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setShowTotpSecret(!showTotpSecret)}
+                aria-label={showTotpSecret ? '隐藏 TOTP Secret' : '显示 TOTP Secret'}
+              >
+                {showTotpSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -246,7 +277,7 @@ export function CredentialDialog({ open, onOpenChange, credential, existingTags 
                   className="w-full"
                 />
                 {tagInput && matchTags.length > 0 && (
-                  <div className="absolute left-0 top-full z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-md">
+                  <div className="absolute left-0 top-full z-50 mt-1 w-full max-h-32 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
                     {matchTags.map((tag) => (
                       <button
                         key={tag}

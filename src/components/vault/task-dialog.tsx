@@ -5,6 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -124,30 +131,47 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
           <div className="grid grid-cols-2 gap-4 shrink-0">
             <div className="space-y-2">
               <Label htmlFor="task-status">状态</Label>
-              <select
-                id="task-status"
+              <Select
                 value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                onValueChange={(v) => v && setStatus(v)}
               >
-                {statusOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {statusOptions.find(opt => opt.value === status)?.label ?? '选择状态'}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="task-priority">优先级</Label>
-              <select
-                id="task-priority"
-                value={priority}
-                onChange={(e) => setPriority(Number(e.target.value))}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+              <Select
+                value={String(priority)}
+                onValueChange={(v) => v && setPriority(Number(v))}
               >
-                {priorityOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue>
+                    {priorityOptions.find(opt => opt.value === priority)?.label ?? '选择优先级'}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {priorityOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={String(opt.value)}>
+                      <span className="flex items-center gap-2">
+                        {opt.color && <span className={`h-2 w-2 rounded-full ${opt.color}`} />}
+                        {opt.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </form>

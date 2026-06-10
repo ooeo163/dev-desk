@@ -80,7 +80,20 @@ export default function SettingsPage() {
                           : 'border-border hover:border-primary/50 hover:bg-accent'
                       )}
                     >
-                      <opt.icon className={cn('h-5 w-5', isActive && 'text-primary')} />
+                      <div className={cn(
+                        'flex h-8 w-12 items-center justify-center rounded-md border',
+                        opt.value === 'light' && 'bg-white border-gray-200',
+                        opt.value === 'dark' && 'bg-gray-900 border-gray-700',
+                        opt.value === 'system' && 'bg-gradient-to-r from-white to-gray-900 border-gray-400',
+                      )}>
+                        <opt.icon className={cn(
+                          'h-4 w-4',
+                          opt.value === 'light' && 'text-gray-800',
+                          opt.value === 'dark' && 'text-gray-200',
+                          opt.value === 'system' && 'text-gray-500',
+                          isActive && 'text-primary',
+                        )} />
+                      </div>
                       <span className={cn('text-sm font-medium', isActive && 'text-primary')}>
                         {opt.label}
                       </span>
@@ -101,14 +114,16 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-3">
-                <Shield className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">空闲超时</span>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">空闲超时</span>
+                </div>
                 <Select
                   value={String(autoLockTimeoutMs)}
                   onValueChange={handleAutoLockChange}
                 >
-                  <SelectTrigger className="w-36">
+                  <SelectTrigger className="w-full max-w-48">
                     <SelectValue>
                       {AUTO_LOCK_OPTIONS.find(opt => opt.value === String(autoLockTimeoutMs))?.label ?? '选择时间'}
                     </SelectValue>

@@ -35,7 +35,7 @@ export function Header({ onMenuClick, onSearchClick }: HeaderProps) {
         )}
         <Button
           variant="outline"
-          className="h-9 w-64 justify-start text-muted-foreground"
+          className="h-9 flex-1 max-w-md justify-start text-muted-foreground"
           onClick={onSearchClick}
         >
           <Search className="mr-2 h-4 w-4" />

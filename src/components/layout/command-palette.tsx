@@ -42,13 +42,13 @@ export function CommandPalette({
   const { data: credentials = [] } = useQuery({
     queryKey: ['credentials'],
     queryFn: getCredentials,
-    enabled: isOpen,
+    staleTime: 30000,
   });
 
   const { data: tasksData } = useQuery({
     queryKey: ['tasks'],
     queryFn: () => getTasks(),
-    enabled: isOpen,
+    staleTime: 30000,
   });
 
   const tasks = tasksData?.data ?? [];

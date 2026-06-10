@@ -46,7 +46,7 @@ export default function DashboardLayout({
 
       {/* Mobile Sidebar Sheet */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="w-64 p-0 gap-0 overflow-hidden">
+        <SheetContent side="left" className="w-[min(256px,80vw)] p-0 gap-0 overflow-hidden">
           <SheetTitle className="sr-only">导航菜单</SheetTitle>
           <Sidebar onNavigate={() => setMobileOpen(false)} />
         </SheetContent>

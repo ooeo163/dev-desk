@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Pencil, Trash2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   todo: { label: '待办', color: 'bg-amber-500' },
@@ -51,7 +52,7 @@ export function TaskDetail({ task, open, onOpenChange, onEdit, onDelete, onStatu
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[75vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-xl">{task.title}</DialogTitle>
           <div className="flex items-center gap-2">
@@ -92,7 +93,9 @@ export function TaskDetail({ task, open, onOpenChange, onEdit, onDelete, onStatu
                   key={s}
                   size={isActive ? 'sm' : 'xs'}
                   variant="outline"
-                  className={isActive ? 'border-foreground/30' : 'text-muted-foreground/60 opacity-60 scale-95'}
+                  className={cn(
+                    isActive ? 'border-foreground/30' : 'text-muted-foreground/60 opacity-60'
+                  )}
                   onClick={() => onStatusChange(task.id, s)}
                 >
                   <span className={`mr-1 h-2 w-2 rounded-full ${cfg.color}`} />
@@ -118,8 +121,6 @@ export function TaskDetail({ task, open, onOpenChange, onEdit, onDelete, onStatu
             <p>创建: {new Date(task.createdAt).toLocaleString('zh-CN')}</p>
           </div>
         </div>
-
-        <div className="h-4" />
       </DialogContent>
     </Dialog>
   );

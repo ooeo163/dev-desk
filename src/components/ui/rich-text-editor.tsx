@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -55,7 +55,7 @@ function ToolbarButton({ editor, action, isActive, children, title }: {
       title={title}
       onMouseDown={(e) => { e.preventDefault(); action(); }}
       className={cn(
-        'flex h-7 w-7 items-center justify-center rounded transition-colors',
+        'flex h-8 w-8 items-center justify-center rounded transition-colors',
         isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
       )}
     >
@@ -65,75 +65,89 @@ function ToolbarButton({ editor, action, isActive, children, title }: {
 }
 
 function ColorPicker({ editor }: { editor: Editor }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="relative group">
+    <div className="relative">
       <button
         type="button"
         title="文字颜色"
-        onMouseDown={(e) => e.preventDefault()}
-        className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        onMouseDown={(e) => { e.preventDefault(); setOpen(!open); }}
+        className={cn(
+          'flex h-8 w-8 items-center justify-center rounded transition-colors',
+          open ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+        )}
       >
-        <Palette className="h-3.5 w-3.5" />
+        <Palette className="h-4 w-4" />
       </button>
-      <div className="absolute left-0 top-full z-50 mt-1 hidden group-hover:grid grid-cols-5 gap-0.5 rounded-md border border-border bg-popover p-1 shadow-md min-w-[110px]">
-        {COLORS.map((c) => (
-          <button
-            key={c.label}
-            type="button"
-            title={c.label}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              editor.chain().focus().setColor(c.value ?? '').run();
-            }}
-            className={cn(
-              'h-5 w-5 rounded border',
-              c.value ? 'border-border' : 'border-dashed border-muted-foreground/40'
-            )}
-            style={c.value ? { backgroundColor: c.value } : undefined}
-          >
-            {!c.value && <span className="flex h-full items-center justify-center text-[8px] text-muted-foreground/60">×</span>}
-          </button>
-        ))}
-      </div>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1 grid grid-cols-5 gap-0.5 rounded-md border border-border bg-popover p-1 shadow-md min-w-[110px]">
+          {COLORS.map((c) => (
+            <button
+              key={c.label}
+              type="button"
+              title={c.label}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                editor.chain().focus().setColor(c.value ?? '').run();
+                setOpen(false);
+              }}
+              className={cn(
+                'h-5 w-5 rounded border',
+                c.value ? 'border-border' : 'border-dashed border-muted-foreground/40'
+              )}
+              style={c.value ? { backgroundColor: c.value } : undefined}
+            >
+              {!c.value && <span className="flex h-full items-center justify-center text-[8px] text-muted-foreground/60">×</span>}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function HighlightPicker({ editor }: { editor: Editor }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="relative group">
+    <div className="relative">
       <button
         type="button"
         title="背景高亮"
-        onMouseDown={(e) => e.preventDefault()}
-        className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        onMouseDown={(e) => { e.preventDefault(); setOpen(!open); }}
+        className={cn(
+          'flex h-8 w-8 items-center justify-center rounded transition-colors',
+          open ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+        )}
       >
-        <Highlighter className="h-3.5 w-3.5" />
+        <Highlighter className="h-4 w-4" />
       </button>
-      <div className="absolute left-0 top-full z-50 mt-1 hidden group-hover:grid grid-cols-6 gap-0.5 rounded-md border border-border bg-popover p-1 shadow-md">
-        {HIGHLIGHT_COLORS.map((c) => (
-          <button
-            key={c.label}
-            type="button"
-            title={c.label}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              if (c.value) {
-                editor.chain().focus().toggleHighlight({ color: c.value }).run();
-              } else {
-                editor.chain().focus().unsetHighlight().run();
-              }
-            }}
-            className={cn(
-              'h-5 w-5 rounded border',
-              c.value ? 'border-border' : 'border-dashed border-muted-foreground/40'
-            )}
-            style={c.value ? { backgroundColor: c.value } : undefined}
-          >
-            {!c.value && <span className="flex h-full items-center justify-center text-[8px] text-muted-foreground/60">×</span>}
-          </button>
-        ))}
-      </div>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1 grid grid-cols-6 gap-0.5 rounded-md border border-border bg-popover p-1 shadow-md">
+          {HIGHLIGHT_COLORS.map((c) => (
+            <button
+              key={c.label}
+              type="button"
+              title={c.label}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                if (c.value) {
+                  editor.chain().focus().toggleHighlight({ color: c.value }).run();
+                } else {
+                  editor.chain().focus().unsetHighlight().run();
+                }
+                setOpen(false);
+              }}
+              className={cn(
+                'h-5 w-5 rounded border',
+                c.value ? 'border-border' : 'border-dashed border-muted-foreground/40'
+              )}
+              style={c.value ? { backgroundColor: c.value } : undefined}
+            >
+              {!c.value && <span className="flex h-full items-center justify-center text-[8px] text-muted-foreground/60">×</span>}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -156,7 +170,7 @@ export function RichTextEditor({ value, onChange, className }: RichTextEditorPro
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[120px] px-3 py-2',
+        class: 'prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[200px] px-3 py-2',
       },
     },
   });
@@ -175,37 +189,37 @@ export function RichTextEditor({ value, onChange, className }: RichTextEditorPro
     <div className={cn('flex flex-col rounded-md border border-input bg-background overflow-hidden', className)}>
       <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-2 py-1 shrink-0">
         <ToolbarButton editor={editor} action={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive('bold')} title="粗体">
-          <Bold className="h-3.5 w-3.5" />
+          <Bold className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton editor={editor} action={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive('italic')} title="斜体">
-          <Italic className="h-3.5 w-3.5" />
+          <Italic className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton editor={editor} action={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive('underline')} title="下划线">
-          <UnderlineIcon className="h-3.5 w-3.5" />
+          <UnderlineIcon className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton editor={editor} action={() => editor.chain().focus().toggleStrike().run()} isActive={editor.isActive('strike')} title="删除线">
-          <Strikethrough className="h-3.5 w-3.5" />
+          <Strikethrough className="h-4 w-4" />
         </ToolbarButton>
 
         <div className="mx-1 h-5 w-px bg-border" />
 
         <ToolbarButton editor={editor} action={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} isActive={editor.isActive('heading', { level: 1 })} title="大标题">
-          <Heading1 className="h-3.5 w-3.5" />
+          <Heading1 className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton editor={editor} action={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} isActive={editor.isActive('heading', { level: 2 })} title="中标题">
-          <Heading2 className="h-3.5 w-3.5" />
+          <Heading2 className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton editor={editor} action={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} isActive={editor.isActive('heading', { level: 3 })} title="小标题">
-          <Heading3 className="h-3.5 w-3.5" />
+          <Heading3 className="h-4 w-4" />
         </ToolbarButton>
 
         <div className="mx-1 h-5 w-px bg-border" />
 
         <ToolbarButton editor={editor} action={() => editor.chain().focus().toggleBulletList().run()} isActive={editor.isActive('bulletList')} title="无序列表">
-          <List className="h-3.5 w-3.5" />
+          <List className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton editor={editor} action={() => editor.chain().focus().toggleOrderedList().run()} isActive={editor.isActive('orderedList')} title="有序列表">
-          <ListOrdered className="h-3.5 w-3.5" />
+          <ListOrdered className="h-4 w-4" />
         </ToolbarButton>
 
         <div className="mx-1 h-5 w-px bg-border" />
@@ -216,10 +230,10 @@ export function RichTextEditor({ value, onChange, className }: RichTextEditorPro
         <div className="mx-1 h-5 w-px bg-border" />
 
         <ToolbarButton editor={editor} action={() => editor.chain().focus().undo().run()} isActive={false} title="撤销">
-          <Undo2 className="h-3.5 w-3.5" />
+          <Undo2 className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton editor={editor} action={() => editor.chain().focus().redo().run()} isActive={false} title="重做">
-          <Redo2 className="h-3.5 w-3.5" />
+          <Redo2 className="h-4 w-4" />
         </ToolbarButton>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto">

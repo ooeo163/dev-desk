@@ -150,7 +150,7 @@ export function CredentialDetail({ credentialId, open, onOpenChange, onEdit }: C
 
             <Separator />
 
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -161,7 +161,7 @@ export function CredentialDetail({ credentialId, open, onOpenChange, onEdit }: C
               >
                 <Pencil className="mr-1 h-3 w-3" /> 编辑
               </Button>
-              <Button variant="destructive" size="sm" onClick={handleDelete}>
+              <Button variant="destructive" size="sm" className="ml-auto" onClick={handleDelete}>
                 <Trash2 className="mr-1 h-3 w-3" /> 删除
               </Button>
             </div>
@@ -210,13 +210,13 @@ function SensitiveField({
     <div className="space-y-1">
       <p className="text-sm font-medium text-muted-foreground">{label}</p>
       <div className="flex items-center gap-2">
-        <code className="flex-1 rounded border border-border bg-muted px-2 py-1 text-sm font-mono">
+        <code className="flex-1 rounded-lg border border-border bg-muted px-2 py-1 text-sm font-mono">
           {shown ? value : '••••••••'}
         </code>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggle}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggle} aria-label={shown ? `隐藏${label}` : `显示${label}`}>
           {shown ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onCopy(value, label)}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onCopy(value, label)} aria-label={`复制${label}`}>
           <Copy className="h-3 w-3" />
         </Button>
       </div>

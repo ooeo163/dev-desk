@@ -141,7 +141,7 @@ export default function CredentialsPage() {
       </div>
 
       {/* Search and Filters */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -187,7 +187,7 @@ export default function CredentialsPage() {
           {filtered.map((cred) => (
             <Card
               key={cred.id}
-              className="cursor-pointer p-4 transition-colors hover:bg-muted/50"
+              className="cursor-pointer p-4 transition-all hover:bg-muted/50 hover:shadow-sm hover:scale-[1.005]"
               onClick={() => {
                 setSelectedId(cred.id);
                 setDetailOpen(true);
@@ -230,7 +230,7 @@ export default function CredentialsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-9 w-9"
                         title="复制用户名"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -239,35 +239,35 @@ export default function CredentialsPage() {
                           toast.success('用户名已复制');
                         }}
                       >
-                        {copyFeedback[`copy-username-${cred.id}`] ? <Check className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                        {copyFeedback[`copy-username-${cred.id}`] ? <Check className="h-4 w-4" /> : <User className="h-4 w-4" />}
                       </Button>
                     )}
                     {cred.hasPassword && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-9 w-9"
                         title="复制密码"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCopyField(cred.id, `copy-password-${cred.id}`, 'password', '密码');
                         }}
                       >
-                        {copyFeedback[`copy-password-${cred.id}`] ? <Check className="h-3 w-3" /> : <KeyRound className="h-3 w-3" />}
+                        {copyFeedback[`copy-password-${cred.id}`] ? <Check className="h-4 w-4" /> : <KeyRound className="h-4 w-4" />}
                       </Button>
                     )}
                     {cred.hasApiKey && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-9 w-9"
                         title="复制 API Key"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCopyField(cred.id, `copy-apikey-${cred.id}`, 'apiKey', 'API Key');
                         }}
                       >
-                        {copyFeedback[`copy-apikey-${cred.id}`] ? <Check className="h-3 w-3" /> : <Key className="h-3 w-3" />}
+                        {copyFeedback[`copy-apikey-${cred.id}`] ? <Check className="h-4 w-4" /> : <Key className="h-4 w-4" />}
                       </Button>
                     )}
                   </div>

@@ -63,8 +63,8 @@ function DroppableColumn({ statusKey, children }: { statusKey: string; children:
     <div
       ref={setNodeRef}
       className={cn(
-        'space-y-2 flex-1 min-h-0 rounded-lg transition-colors p-1 -m-1 overflow-y-auto',
-        isOver && 'bg-primary/5 ring-1 ring-primary/20'
+        'space-y-2 flex-1 min-h-0 rounded-lg transition-all duration-150 p-1 -m-1 overflow-y-auto',
+        isOver && 'bg-primary/10 ring-2 ring-primary/30 scale-[1.005]'
       )}
     >
       {children}
@@ -79,13 +79,16 @@ function DraggableCard({ task, children, onClick }: { task: TaskItem; children: 
     <div
       ref={setNodeRef}
       className={cn(
-        'transition-opacity',
-        isDragging && 'opacity-40'
+        'relative transition-all duration-150',
+        isDragging && 'opacity-30'
       )}
       style={transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined}
     >
       <Card
-        className="cursor-pointer p-3 transition-colors hover:bg-muted/50"
+        className={cn(
+          'cursor-pointer p-3 transition-colors hover:bg-muted/50',
+          isDragging && 'border-dashed border-primary/40'
+        )}
         onClick={onClick}
         {...attributes}
         {...listeners}
@@ -346,14 +349,14 @@ export default function TasksPage() {
           </Button>
         </div>
 
-        <div className="flex flex-1 min-h-0 divide-x divide-border">
+        <div className="flex flex-1 min-h-0 gap-6">
           {statusOrder.map((statusKey) => {
             const config = statusConfig[statusKey];
             const items = grouped[statusKey];
             const total = totals[statusKey];
 
             return (
-              <div key={statusKey} className="flex-1 min-h-0 space-y-3 px-6 first:pl-0 last:pr-0 flex flex-col">
+              <div key={statusKey} className="flex-1 min-h-0 space-y-3 flex flex-col">
                 <div className="flex items-center gap-2">
                   <div className={`h-2 w-2 rounded-full ${config.color}`} />
                   <h2 className="text-sm font-semibold">{config.label}</h2>
@@ -362,7 +365,8 @@ export default function TasksPage() {
 
                 <DroppableColumn statusKey={statusKey}>
                   {items.length === 0 ? (
-                    <Card className="flex items-center justify-center py-8">
+                    <Card className="flex flex-col items-center justify-center py-8 gap-2">
+                      <Plus className="h-5 w-5 text-muted-foreground/40" />
                       <p className="text-sm text-muted-foreground">暂无任务</p>
                     </Card>
                   ) : (
@@ -433,7 +437,7 @@ export default function TasksPage() {
 
       <DragOverlay dropAnimation={null}>
         {activeTask ? (
-          <Card className="p-3 shadow-xl border-primary/20 bg-card w-[calc(100vw/3-2rem)]">
+          <Card className="p-3 shadow-xl border-primary/20 bg-card w-72">
             <TaskCardContent task={activeTask} />
           </Card>
         ) : null}

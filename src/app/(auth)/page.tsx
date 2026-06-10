@@ -59,14 +59,14 @@ export default function AuthPage() {
 
   if (isSetup === null) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-background">
+      <main className="flex min-h-screen items-center justify-center bg-background animate-in fade-in-0">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </main>
     );
   }
 
   return (
-    <main className="flex min-h-screen items-start justify-center bg-background p-4 pt-[22vh]">
+    <main className="flex min-h-screen items-start justify-center bg-background p-4 pt-[18vh]">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -75,13 +75,13 @@ export default function AuthPage() {
           <div>
             <h2 className="text-lg font-semibold">DevDesk</h2>
           </div>
-          {/* <CardDescription>
+          <CardDescription>
             {isSetup ? '设置你的主密码来初始化工作台' : '输入主密码解锁工作台'}
-          </CardDescription> */}
+          </CardDescription>
         </CardHeader>
         <CardContent className="pb-8">
           {isSetup ? (
-            <form action={initAction} className="space-y-5">
+            <form action={initAction} className="space-y-6">
               <input type="text" name="username" autoComplete="username" className="hidden" tabIndex={-1} aria-hidden="true" />
               <div className="space-y-2">
                 <Label htmlFor="setup-password">主密码</Label>
@@ -100,6 +100,7 @@ export default function AuthPage() {
                     type="button"
                     className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? '隐藏密码' : '显示密码'}
                     tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -122,6 +123,7 @@ export default function AuthPage() {
                     type="button"
                     className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     onClick={() => setShowConfirm(!showConfirm)}
+                    aria-label={showConfirm ? '隐藏确认密码' : '显示确认密码'}
                     tabIndex={-1}
                   >
                     {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -138,7 +140,7 @@ export default function AuthPage() {
               </Button>
             </form>
           ) : (
-            <form action={unlockAction} className="space-y-5">
+            <form action={unlockAction} className="space-y-6">
               <input type="text" name="username" autoComplete="username" className="hidden" tabIndex={-1} aria-hidden="true" />
               <div className="space-y-2">
                 {/* <Label htmlFor="unlock-password">主密码</Label> */}
@@ -158,6 +160,7 @@ export default function AuthPage() {
                     type="button"
                     className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? '隐藏密码' : '显示密码'}
                     tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
