@@ -51,7 +51,7 @@ export function TaskDetail({ task, open, onOpenChange, onEdit, onDelete, onStatu
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl min-h-[60vh] flex flex-col">
+      <DialogContent className="sm:max-w-3xl max-h-[75vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-xl">{task.title}</DialogTitle>
           <div className="flex items-center gap-2">
@@ -71,8 +71,8 @@ export function TaskDetail({ task, open, onOpenChange, onEdit, onDelete, onStatu
         <Separator />
 
         <div className="flex-1 flex flex-col space-y-1 min-h-0">
-          <p className="text-sm font-medium text-muted-foreground">描述</p>
-          <div className="prose prose-sm dark:prose-invert flex-1 rounded-md border border-border p-3 overflow-y-auto max-w-none">
+          <p className="text-sm font-medium text-muted-foreground shrink-0">描述</p>
+          <div className="prose prose-sm dark:prose-invert flex-1 rounded-md border border-border p-3 overflow-y-auto min-h-0 max-w-none">
             {task.description ? (
               <div dangerouslySetInnerHTML={{ __html: task.description }} />
             ) : (

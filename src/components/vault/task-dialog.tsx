@@ -92,7 +92,7 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl min-h-[60vh] flex flex-col">
+      <DialogContent className="sm:max-w-3xl max-h-[75vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-xl">{isEdit ? '编辑任务' : '新建任务'}</DialogTitle>
           <DialogDescription>
@@ -100,7 +100,7 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 space-y-4">
+        <form id="task-form" onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden space-y-4">
           <div className="space-y-2">
             <Label htmlFor="task-title">标题 *</Label>
             <Input
@@ -117,11 +117,11 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
             <RichTextEditor
               value={description}
               onChange={setDescription}
-              className="flex-1 flex flex-col min-h-0 [&_.tiptap]:flex-1"
+              className="flex-1 min-h-0"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 shrink-0">
             <div className="space-y-2">
               <Label htmlFor="task-status">状态</Label>
               <select
@@ -150,18 +150,18 @@ export function TaskDialog({ open, onOpenChange, task }: TaskDialogProps) {
               </select>
             </div>
           </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              取消
-            </Button>
-            <Button type="submit" disabled={loading || !title}>
-              {loading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> 保存中...</>
-              ) : isEdit ? '保存修改' : '创建任务'}
-            </Button>
-          </DialogFooter>
         </form>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            取消
+          </Button>
+          <Button type="submit" form="task-form" disabled={loading || !title}>
+            {loading ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> 保存中...</>
+            ) : isEdit ? '保存修改' : '创建任务'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

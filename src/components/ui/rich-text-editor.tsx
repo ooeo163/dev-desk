@@ -172,8 +172,8 @@ export function RichTextEditor({ value, onChange, className }: RichTextEditorPro
   if (!editor) return null;
 
   return (
-    <div className={cn('rounded-md border border-input bg-background', className)}>
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-2 py-1">
+    <div className={cn('flex flex-col rounded-md border border-input bg-background overflow-hidden', className)}>
+      <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-2 py-1 shrink-0">
         <ToolbarButton editor={editor} action={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive('bold')} title="粗体">
           <Bold className="h-3.5 w-3.5" />
         </ToolbarButton>
@@ -222,7 +222,9 @@ export function RichTextEditor({ value, onChange, className }: RichTextEditorPro
           <Redo2 className="h-3.5 w-3.5" />
         </ToolbarButton>
       </div>
-      <EditorContent editor={editor} />
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 }
