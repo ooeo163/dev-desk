@@ -134,6 +134,8 @@ export default function TasksPage() {
     status: string; priority: number; credentialId: string | null;
   } | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [highlightStatus, setHighlightStatus] = useState<string | null>(null);
+  const [mobileTab, setMobileTab] = useState<string>('todo');
   const [pages, setPages] = useState({
     todo: 1,
     in_progress: 1,
@@ -249,6 +251,7 @@ export default function TasksPage() {
   useEffect(() => {
     const action = searchParams.get('action');
     const detail = searchParams.get('detail');
+    const status = searchParams.get('status');
     if (action === 'create') {
       setEditTask(null);
       setDialogOpen(true);
@@ -260,6 +263,11 @@ export default function TasksPage() {
         setDetailOpen(true);
         router.replace('/dashboard/tasks');
       }
+    } else if (status && ['todo', 'in_progress', 'done'].includes(status)) {
+      setHighlightStatus(status);
+      setMobileTab(status);
+      router.replace('/dashboard/tasks');
+      setTimeout(() => setHighlightStatus(null), 2000);
     }
   }, [searchParams, allTasks, router]);
 
@@ -338,27 +346,140 @@ export default function TasksPage() {
   }
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex flex-col h-full min-h-0">
-        <div className="flex items-center justify-between mb-6 shrink-0">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">任务管理</h1>
-            <p className="text-muted-foreground">拖拽卡片可快速切换状态</p>
-          </div>
-          <Button onClick={handleCreate}>
-            <Plus className="mr-2 h-4 w-4" /> 新建任务
-          </Button>
+    <div className="flex flex-col h-full min-h-0">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4 sm:mb-6 shrink-0">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">任务管理</h1>
+          <p className="text-sm sm:text-base text-muted-foreground hidden sm:block">拖拽卡片可快速切换状态</p>
         </div>
+        <Button onClick={handleCreate} className="w-full sm:w-auto">
+          <Plus className="mr-2 h-4 w-4" /> 新建任务
+        </Button>
+      </div>
 
-        <div className="flex flex-1 min-h-0 gap-6">
+      {/* Mobile Status Tabs */}
+      <div className="flex gap-1 mb-4 lg:hidden rounded-lg bg-muted/50 p-1">
+        {statusOrder.map((statusKey) => {
+          const config = statusConfig[statusKey];
+          const total = totals[statusKey];
+          return (
+            <button
+              key={statusKey}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-all',
+                mobileTab === statusKey
+                  ? 'bg-background shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+              onClick={() => setMobileTab(statusKey)}
+            >
+              <div className={`h-2 w-2 rounded-full ${config.color}`} />
+              {config.label}
+              <Badge variant="secondary" className="text-xs h-5 min-w-[20px] px-1">{total}</Badge>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Mobile List View */}
+      <div className="flex-1 min-h-0 overflow-y-auto lg:hidden">
+        {(() => {
+          const items = grouped[mobileTab as keyof typeof grouped];
+          const total = totals[mobileTab as keyof typeof totals];
+          return (
+            <div className="space-y-2">
+              {items.length === 0 ? (
+                <Card className="flex flex-col items-center justify-center py-12 gap-2">
+                  {mobileTab === 'todo' && <EmptyTodo className="h-16 w-16 text-muted-foreground/30" />}
+                  {mobileTab === 'in_progress' && <EmptyInProgress className="h-16 w-16 text-muted-foreground/30" />}
+                  {mobileTab === 'done' && <EmptyDone className="h-16 w-16 text-muted-foreground/30" />}
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {mobileTab === 'todo' && '没有待办事项'}
+                    {mobileTab === 'in_progress' && '没有进行中的任务'}
+                    {mobileTab === 'done' && '还没有完成的任务'}
+                  </p>
+                </Card>
+              ) : (
+                items.map((task) => (
+                  <Card
+                    key={task.id}
+                    className="cursor-pointer p-4 transition-colors hover:bg-muted/50 active:bg-muted"
+                    onClick={() => {
+                      setSelectedTask(task);
+                      setDetailOpen(true);
+                    }}
+                  >
+                    <div className="flex items-start justify-between">
+                      <TaskCardContent task={task} />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={<Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" />}
+                          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                          onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                          <DropdownMenuItem onClick={() => handleEdit(task)}>
+                            <Pencil className="mr-2 h-3 w-3" /> 编辑
+                          </DropdownMenuItem>
+                          {mobileTab !== 'todo' && (
+                            <DropdownMenuItem onClick={() => handleStatusChange(task.id, 'todo')}>
+                              标记为待办
+                            </DropdownMenuItem>
+                          )}
+                          {mobileTab !== 'in_progress' && (
+                            <DropdownMenuItem onClick={() => handleStatusChange(task.id, 'in_progress')}>
+                              标记为进行中
+                            </DropdownMenuItem>
+                          )}
+                          {mobileTab !== 'done' && (
+                            <DropdownMenuItem onClick={() => handleStatusChange(task.id, 'done')}>
+                              标记为已完成
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDelete(task.id)}
+                          >
+                            <Trash2 className="mr-2 h-3 w-3" /> 删除
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </Card>
+                ))
+              )}
+              <Pagination
+                page={pages[mobileTab as keyof typeof pages]}
+                total={total}
+                pageSize={pageSize}
+                onChange={(page) => setPages(prev => ({ ...prev, [mobileTab]: page }))}
+                className="pt-3 mt-2 border-t"
+              />
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Desktop Kanban */}
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <div className="hidden lg:flex flex-1 min-h-0 gap-6">
           {statusOrder.map((statusKey) => {
             const config = statusConfig[statusKey];
             const items = grouped[statusKey];
             const total = totals[statusKey];
 
             return (
-              <div key={statusKey} className="flex-1 min-h-0 space-y-3 flex flex-col">
-                <div className="flex items-center gap-2">
+              <div
+                key={statusKey}
+                className={cn(
+                  'flex-1 min-h-0 space-y-3 flex flex-col rounded-lg transition-all duration-500',
+                  highlightStatus === statusKey && 'ring-2 ring-primary/30 bg-primary/5'
+                )}
+              >
+                <div className="flex items-center gap-2 px-1">
                   <div className={`h-2 w-2 rounded-full ${config.color}`} />
                   <h2 className="text-sm font-semibold">{config.label}</h2>
                   <Badge variant="secondary" className="text-xs">{total}</Badge>
@@ -440,15 +561,15 @@ export default function TasksPage() {
             );
           })}
         </div>
-      </div>
 
-      <DragOverlay dropAnimation={null}>
-        {activeTask ? (
-          <Card className="p-3 shadow-xl border-primary/20 bg-card w-72">
-            <TaskCardContent task={activeTask} />
-          </Card>
-        ) : null}
-      </DragOverlay>
+        <DragOverlay dropAnimation={null}>
+          {activeTask ? (
+            <Card className="p-3 shadow-xl border-primary/20 bg-card w-72">
+              <TaskCardContent task={activeTask} />
+            </Card>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       <TaskDialog open={dialogOpen} onOpenChange={handleDialogClose} task={editTask} />
 
@@ -489,6 +610,6 @@ export default function TasksPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </DndContext>
+    </div>
   );
 }

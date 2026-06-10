@@ -16,10 +16,32 @@ export async function getDashboardStats() {
       id: credentials.id,
       title: credentials.title,
       username: credentials.username,
+      hasPassword: credentials.passwordCipher,
       updatedAt: credentials.updatedAt,
     })
     .from(credentials)
     .orderBy(desc(credentials.updatedAt))
+    .limit(5)
+    .all()
+    .map((row) => ({
+      ...row,
+      hasPassword: !!row.hasPassword,
+    }));
+
+  const recentTasks = db
+    .select({
+      id: tasks.id,
+      title: tasks.title,
+      description: tasks.description,
+      status: tasks.status,
+      priority: tasks.priority,
+      credentialId: tasks.credentialId,
+      credentialTitle: credentials.title,
+      createdAt: tasks.createdAt,
+    })
+    .from(tasks)
+    .leftJoin(credentials, eq(tasks.credentialId, credentials.id))
+    .orderBy(desc(tasks.createdAt))
     .limit(5)
     .all();
 
@@ -29,5 +51,6 @@ export async function getDashboardStats() {
     inProgressCount,
     doneCount,
     recentCredentials,
+    recentTasks,
   };
 }
