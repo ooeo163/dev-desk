@@ -109,7 +109,9 @@ export default function SettingsPage() {
                   onValueChange={handleAutoLockChange}
                 >
                   <SelectTrigger className="w-36">
-                    <SelectValue />
+                    <SelectValue>
+                      {AUTO_LOCK_OPTIONS.find(opt => opt.value === String(autoLockTimeoutMs))?.label ?? '选择时间'}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {AUTO_LOCK_OPTIONS.map((opt) => (

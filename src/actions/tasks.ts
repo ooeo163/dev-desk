@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { tasks, credentials } from '@/lib/db/schema';
 import { createTaskSchema, updateTaskSchema, taskStatusSchema } from '@/lib/validation';
-import { eq, desc, asc } from 'drizzle-orm';
+import { eq, desc, asc, count } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import type { TaskStatus } from '@/lib/validation';
 
@@ -39,7 +39,24 @@ export async function createTask(
   return { success: true };
 }
 
-export async function getTasks(filter?: { status?: TaskStatus }) {
+export async function getTasks(filter?: { 
+  status?: TaskStatus;
+  page?: number;
+  pageSize?: number;
+}) {
+  const page = filter?.page ?? 1;
+  const pageSize = filter?.pageSize ?? 20;
+  const offset = (page - 1) * pageSize;
+
+  // 查询总数
+  let countQuery = db.select({ total: count() }).from(tasks);
+  if (filter?.status) {
+    countQuery = countQuery.where(eq(tasks.status, filter.status)) as typeof countQuery;
+  }
+  const countResult = countQuery.get();
+  const total = countResult?.total ?? 0;
+
+  // 分页查询
   let query = db
     .select({
       id: tasks.id,
@@ -58,9 +75,13 @@ export async function getTasks(filter?: { status?: TaskStatus }) {
     query = query.where(eq(tasks.status, filter.status)) as typeof query;
   }
 
-  const rows = query.orderBy(desc(tasks.priority), desc(tasks.createdAt)).all();
+  const rows = query
+    .orderBy(desc(tasks.priority), desc(tasks.createdAt))
+    .limit(pageSize)
+    .offset(offset)
+    .all();
 
-  return rows;
+  return { data: rows, total, page, pageSize };
 }
 
 export async function updateTaskStatus(

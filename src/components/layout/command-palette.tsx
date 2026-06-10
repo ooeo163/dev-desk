@@ -45,11 +45,13 @@ export function CommandPalette({
     enabled: isOpen,
   });
 
-  const { data: tasks = [] } = useQuery({
+  const { data: tasksData } = useQuery({
     queryKey: ['tasks'],
     queryFn: () => getTasks(),
     enabled: isOpen,
   });
+
+  const tasks = tasksData?.data ?? [];
 
   function handleSelect(action: string) {
     setIsOpen(false);

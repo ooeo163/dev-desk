@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   DndContext,
@@ -36,6 +36,7 @@ import { toast } from 'sonner';
 import { getTasks, updateTaskStatus, deleteTask } from '@/actions/tasks';
 import { TaskDialog } from '@/components/vault/task-dialog';
 import { TaskDetail } from '@/components/vault/task-detail';
+import { Pagination } from '@/components/ui/pagination';
 import type { TaskStatus } from '@/lib/validation';
 import { cn } from '@/lib/utils';
 
@@ -62,7 +63,7 @@ function DroppableColumn({ statusKey, children }: { statusKey: string; children:
     <div
       ref={setNodeRef}
       className={cn(
-        'space-y-2 min-h-[80px] rounded-lg transition-colors p-1 -m-1',
+        'space-y-2 flex-1 min-h-0 rounded-lg transition-colors p-1 -m-1 overflow-y-auto',
         isOver && 'bg-primary/5 ring-1 ring-primary/20'
       )}
     >
@@ -97,23 +98,24 @@ function DraggableCard({ task, children, onClick }: { task: TaskItem; children: 
 
 function TaskCardContent({ task }: { task: TaskItem }) {
   return (
-    <div className="flex items-start justify-between">
-      <div className="flex-1 space-y-1">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium">{task.title}</p>
-          {(task.priority ?? 0) > 0 && (
-            <Badge variant="outline" className="text-xs gap-1">
-              <span className={`h-2 w-2 rounded-full ${priorityColors[task.priority ?? 0]}`} />
-              {priorityLabels[task.priority ?? 0]}
-            </Badge>
-          )}
-        </div>
-        {task.description && (
+    <div className="flex-1 space-y-2">
+      <div className="flex items-center gap-2">
+        <p className="text-sm font-medium">{task.title}</p>
+        {(task.priority ?? 0) > 0 && (
+          <Badge variant="outline" className="text-xs gap-1">
+            <span className={`h-2 w-2 rounded-full ${priorityColors[task.priority ?? 0]}`} />
+            {priorityLabels[task.priority ?? 0]}
+          </Badge>
+        )}
+      </div>
+      {task.description && (
+        <>
+          <div className="border-b border-border/50" />
           <p className="text-xs text-muted-foreground line-clamp-2">
             {task.description.replace(/<[^>]+>/g, '')}
           </p>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 }
@@ -128,6 +130,13 @@ export default function TasksPage() {
     status: string; priority: number; credentialId: string | null;
   } | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [pages, setPages] = useState({
+    todo: 1,
+    in_progress: 1,
+    done: 1
+  });
+  const pageSize = 20;
+  const queryClient = useQueryClient();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -135,10 +144,100 @@ export default function TasksPage() {
     }),
   );
 
-  const { data: tasks = [], refetch } = useQuery({
-    queryKey: ['tasks'],
-    queryFn: () => getTasks(),
+  // 乐观更新 mutation
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => updateTaskStatus(id, status),
+    onMutate: async ({ id, status }) => {
+      // 取消正在进行的查询，防止覆盖乐观更新
+      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+
+      // 保存所有状态列的之前数据
+      const previousTodo = queryClient.getQueryData(['tasks', 'todo', pages.todo]);
+      const previousInProgress = queryClient.getQueryData(['tasks', 'in_progress', pages.in_progress]);
+      const previousDone = queryClient.getQueryData(['tasks', 'done', pages.done]);
+
+      // 找到任务所在的源状态列
+      const sourceStatus = allTasks.find(t => t.id === id)?.status;
+
+      // 乐观更新：从源状态列移除任务
+      if (sourceStatus) {
+        queryClient.setQueryData(['tasks', sourceStatus, pages[sourceStatus as keyof typeof pages]], (old: { data: TaskItem[]; total: number } | undefined) => {
+          if (!old) return old;
+          return { ...old, data: old.data.filter((t: TaskItem) => t.id !== id), total: old.total - 1 };
+        });
+      }
+
+      // 乐观更新：添加任务到目标状态列
+      const task = allTasks.find(t => t.id === id);
+      if (task) {
+        queryClient.setQueryData(['tasks', status, pages[status as keyof typeof pages]], (old: { data: TaskItem[]; total: number } | undefined) => {
+          if (!old) return old;
+          const updatedTask = { ...task, status };
+          return { ...old, data: [updatedTask, ...old.data], total: old.total + 1 };
+        });
+      }
+
+      // 更新选中的任务
+      setSelectedTask((prev) => prev && prev.id === id ? { ...prev, status: status as TaskStatus } : prev);
+
+      return { previousTodo, previousInProgress, previousDone, sourceStatus };
+    },
+    onError: (err, variables, context) => {
+      // 回滚到之前的状态
+      if (context?.previousTodo) {
+        queryClient.setQueryData(['tasks', 'todo', pages.todo], context.previousTodo);
+      }
+      if (context?.previousInProgress) {
+        queryClient.setQueryData(['tasks', 'in_progress', pages.in_progress], context.previousInProgress);
+      }
+      if (context?.previousDone) {
+        queryClient.setQueryData(['tasks', 'done', pages.done], context.previousDone);
+      }
+      toast.error('状态更新失败');
+    },
+    onSettled: () => {
+      // 重新获取数据以确保一致性
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
   });
+
+  const { data: todoData, refetch: refetchTodo } = useQuery({
+    queryKey: ['tasks', 'todo', pages.todo],
+    queryFn: () => getTasks({ status: 'todo', page: pages.todo, pageSize }),
+  });
+
+  const { data: inProgressData, refetch: refetchInProgress } = useQuery({
+    queryKey: ['tasks', 'in_progress', pages.in_progress],
+    queryFn: () => getTasks({ status: 'in_progress', page: pages.in_progress, pageSize }),
+  });
+
+  const { data: doneData, refetch: refetchDone } = useQuery({
+    queryKey: ['tasks', 'done', pages.done],
+    queryFn: () => getTasks({ status: 'done', page: pages.done, pageSize }),
+  });
+
+  const grouped = {
+    todo: todoData?.data ?? [],
+    in_progress: inProgressData?.data ?? [],
+    done: doneData?.data ?? [],
+  };
+
+  const totals = {
+    todo: todoData?.total ?? 0,
+    in_progress: inProgressData?.total ?? 0,
+    done: doneData?.total ?? 0,
+  };
+
+  const allTasks = useMemo(
+    () => [...grouped.todo, ...grouped.in_progress, ...grouped.done],
+    [grouped.todo, grouped.in_progress, grouped.done]
+  );
+
+  function refetchAll() {
+    refetchTodo();
+    refetchInProgress();
+    refetchDone();
+  }
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -151,22 +250,16 @@ export default function TasksPage() {
       setDialogOpen(true);
       router.replace('/dashboard/tasks');
     } else if (detail) {
-      const task = tasks.find((t) => t.id === detail);
+      const task = allTasks.find((t) => t.id === detail);
       if (task) {
         setSelectedTask(task);
         setDetailOpen(true);
         router.replace('/dashboard/tasks');
       }
     }
-  }, [searchParams, tasks, router]);
+  }, [searchParams, allTasks, router]);
 
-  const activeTask = activeId ? tasks.find((t) => t.id === activeId) ?? null : null;
-
-  const grouped = {
-    todo: tasks.filter((t) => t.status === 'todo'),
-    in_progress: tasks.filter((t) => t.status === 'in_progress'),
-    done: tasks.filter((t) => t.status === 'done'),
-  };
+  const activeTask = activeId ? allTasks.find((t) => t.id === activeId) ?? null : null;
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id));
@@ -184,26 +277,19 @@ export default function TasksPage() {
     if (statusOrder.includes(overId as typeof statusOrder[number])) {
       targetStatus = overId;
     } else {
-      const targetTask = tasks.find((t) => t.id === overId);
+      const targetTask = allTasks.find((t) => t.id === overId);
       if (!targetTask) return;
       targetStatus = targetTask.status ?? 'todo';
     }
 
-    const task = tasks.find((t) => t.id === taskId);
+    const task = allTasks.find((t) => t.id === taskId);
     if (task && task.status !== targetStatus) {
       await handleStatusChange(taskId, targetStatus);
     }
   }
 
   async function handleStatusChange(id: string, status: string) {
-    const result = await updateTaskStatus(id, status);
-    if (result.success) {
-      toast.success('状态已更新');
-      setSelectedTask((prev) => prev && prev.id === id ? { ...prev, status: status as TaskStatus } : prev);
-      refetch();
-    } else {
-      toast.error(result.error || '更新失败');
-    }
+    statusMutation.mutate({ id, status });
   }
 
   function handleDelete(id: string) {
@@ -232,14 +318,14 @@ export default function TasksPage() {
     if (!open) {
       setDialogOpen(false);
       setEditTask(null);
-      refetch();
+      refetchAll();
     }
   }
 
   function handleDetailClose(open: boolean) {
     if (!open) {
       setDetailOpen(false);
-      refetch();
+      refetchAll();
     }
   }
 
@@ -249,8 +335,8 @@ export default function TasksPage() {
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col h-full min-h-0">
+        <div className="flex items-center justify-between mb-6 shrink-0">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">任务管理</h1>
             <p className="text-muted-foreground">拖拽卡片可快速切换状态</p>
@@ -260,17 +346,18 @@ export default function TasksPage() {
           </Button>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="flex flex-1 min-h-0 divide-x divide-border">
           {statusOrder.map((statusKey) => {
             const config = statusConfig[statusKey];
             const items = grouped[statusKey];
+            const total = totals[statusKey];
 
             return (
-              <div key={statusKey} className="space-y-3">
+              <div key={statusKey} className="flex-1 min-h-0 space-y-3 px-6 first:pl-0 last:pr-0 flex flex-col">
                 <div className="flex items-center gap-2">
                   <div className={`h-2 w-2 rounded-full ${config.color}`} />
                   <h2 className="text-sm font-semibold">{config.label}</h2>
-                  <Badge variant="secondary" className="text-xs">{items.length}</Badge>
+                  <Badge variant="secondary" className="text-xs">{total}</Badge>
                 </div>
 
                 <DroppableColumn statusKey={statusKey}>
@@ -330,6 +417,14 @@ export default function TasksPage() {
                     ))
                   )}
                 </DroppableColumn>
+
+                <Pagination
+                  page={pages[statusKey]}
+                  total={total}
+                  pageSize={pageSize}
+                  onChange={(page) => setPages(prev => ({ ...prev, [statusKey]: page }))}
+                  className="mt-2 pt-2 border-t"
+                />
               </div>
             );
           })}
@@ -375,7 +470,7 @@ export default function TasksPage() {
                 toast.success('任务已删除');
                 if (deleteConfirm.fromDetail) setDetailOpen(false);
                 setDeleteConfirm({ open: false });
-                refetch();
+                refetchAll();
               }}
             >
               删除

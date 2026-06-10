@@ -21,7 +21,7 @@ export function useAutoLock() {
   }, [lock, router]);
 
   useEffect(() => {
-    if (!isUnlocked) return;
+    if (!isUnlocked || autoLockTimeoutMs <= 0) return;
 
     function resetTimer() {
       if (timerRef.current) clearTimeout(timerRef.current);
