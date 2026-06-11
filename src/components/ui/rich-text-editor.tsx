@@ -170,7 +170,7 @@ export function RichTextEditor({ value, onChange, className }: RichTextEditorPro
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[200px] px-3 py-2',
+        class: 'prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[300px] px-3 py-2 [&_p]:leading-relaxed [&_p]:my-1 [&_h1]:leading-tight [&_h1]:my-2 [&_h2]:leading-tight [&_h2]:my-1.5 [&_h3]:leading-tight [&_h3]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5',
       },
     },
   });

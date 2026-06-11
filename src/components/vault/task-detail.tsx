@@ -73,7 +73,7 @@ export function TaskDetail({ task, open, onOpenChange, onEdit, onDelete, onStatu
 
         <div className="flex-1 flex flex-col space-y-1 min-h-0">
           <p className="text-sm font-medium text-muted-foreground shrink-0">描述</p>
-          <div className="prose prose-sm dark:prose-invert flex-1 rounded-md border border-border p-3 overflow-y-auto min-h-0 max-w-none">
+          <div className="prose prose-sm dark:prose-invert flex-1 rounded-md border border-border p-3 overflow-y-auto min-h-[300px] max-w-none [&_p]:leading-relaxed [&_p]:my-1 [&_h1]:leading-tight [&_h1]:my-2 [&_h2]:leading-tight [&_h2]:my-1.5 [&_h3]:leading-tight [&_h3]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5">
             {task.description ? (
               <div dangerouslySetInnerHTML={{ __html: task.description }} />
             ) : (
