@@ -195,7 +195,7 @@ export default function CredentialsPage() {
           )}
         </Card>
       ) : (
-        <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
+        <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(320px,1fr))]">
           {filtered.map((cred) => (
             <Card
               key={cred.id}
@@ -206,54 +206,34 @@ export default function CredentialsPage() {
               }}
             >
               <div className="space-y-2">
-                {cred.tags.length > 0 && (
-                  <>
-                    <div className="flex flex-wrap gap-1">
-                      {cred.tags.map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="border-b border-border/50" />
-                  </>
-                )}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <div className="flex flex-wrap gap-1 min-h-[22px]">
+                  {cred.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+                <div className="border-b border-border/50" />
+                <div className="flex items-start gap-2">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
                       <KeyRound className="h-5 w-5 text-primary" />
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">{cred.title}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{cred.title}</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         {cred.username && (
-                          <span className="flex items-center gap-1">
-                            <User className="h-3 w-3" /> {cred.username}
+                          <span className="flex items-center gap-1 truncate">
+                            <User className="h-3 w-3 shrink-0" /> {cred.username}
                           </span>
                         )}
-                        <span>
+                        <span className="shrink-0">
                           {new Date(cred.updatedAt).toLocaleDateString('zh-CN')}
                         </span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    {cred.username && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9"
-                        title="复制用户名"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          copy(cred.username!);
-                          triggerCopyFeedback(`copy-username-${cred.id}`);
-                          toast.success('用户名已复制');
-                        }}
-                      >
-                        {copyFeedback[`copy-username-${cred.id}`] ? <Check className="h-4 w-4" /> : <User className="h-4 w-4" />}
-                      </Button>
-                    )}
+                  <div className="flex items-center gap-1 shrink-0">
                     {cred.hasPassword && (
                       <Button
                         variant="ghost"
