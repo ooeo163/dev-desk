@@ -181,23 +181,23 @@ export function CredentialDialog({ open, onOpenChange, credential }: CredentialD
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="cred-username">用户名</Label>
-              <Input
-                id="cred-username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="用户名或邮箱"
-                autoComplete="off"
-              />
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="cred-address">地址</Label>
               <Input
                 id="cred-address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="网址或 IP 地址"
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cred-username">用户名</Label>
+              <Input
+                id="cred-username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="用户名或邮箱"
                 autoComplete="off"
               />
             </div>
