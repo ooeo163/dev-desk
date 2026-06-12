@@ -20,7 +20,7 @@ function getWeekRange(date: Date): { start: Date; end: Date } {
   return { start, end };
 }
 
-export function getCurrentWeekRange(): { start: Date; end: Date } {
+export async function getCurrentWeekRange(): Promise<{ start: Date; end: Date }> {
   return getWeekRange(new Date());
 }
 
@@ -87,7 +87,7 @@ export async function getWorkLogById(id: string) {
 }
 
 export async function getOrCreateCurrentWeekWorkLog(): Promise<string> {
-  const { start, end } = getCurrentWeekRange();
+  const { start, end } = await getCurrentWeekRange();
 
   const existing = db
     .select()
@@ -305,7 +305,7 @@ export async function deleteWorkLogItem(id: string): Promise<{ success: boolean 
 }
 
 export async function syncTaskToWorkLog(taskTitle: string, taskId: string): Promise<{ success: boolean }> {
-  const { start, end } = getCurrentWeekRange();
+  const { start, end } = await getCurrentWeekRange();
 
   let workLog = db
     .select()

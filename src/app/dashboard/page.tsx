@@ -68,7 +68,7 @@ export default function DashboardPage() {
   const [credDetailOpen, setCredDetailOpen] = useState(false);
   const [credEditOpen, setCredEditOpen] = useState(false);
   const [credEditData, setCredEditData] = useState<{
-    id: string; title: string; username: string | null; tags: string[];
+    id: string; title: string; username: string | null; address: string | null; tags: string[];
     password?: string | null; apiKey?: string | null; totpSecret?: string | null; notes?: string | null;
   } | null>(null);
 
