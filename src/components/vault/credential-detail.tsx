@@ -30,6 +30,7 @@ interface CredentialData {
   id: string;
   title: string;
   username: string | null;
+  address: string | null;
   tags: string[];
   password?: string | null;
   apiKey?: string | null;
@@ -44,7 +45,7 @@ interface CredentialDetailProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit: (cred: {
-    id: string; title: string; username: string | null; tags: string[];
+    id: string; title: string; username: string | null; address: string | null; tags: string[];
     password?: string | null; apiKey?: string | null; totpSecret?: string | null; notes?: string | null;
   }) => void;
 }
@@ -131,6 +132,34 @@ export function CredentialDetail({ credentialId, open, onOpenChange, onEdit }: C
 
             <Separator />
 
+            {data.username && (
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">用户名</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 rounded-lg border border-border bg-muted px-2 py-1 text-sm font-mono">
+                    {data.username}
+                  </code>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopy(data.username!, '用户名')} aria-label="复制用户名">
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {data.address && (
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">地址</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 rounded-lg border border-border bg-muted px-2 py-1 text-sm font-mono break-all">
+                    {data.address}
+                  </code>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopy(data.address!, '地址')} aria-label="复制地址">
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <SensitiveField
               fieldKey="password" label="密码" value={data.password ?? null}
               shown={!!showFields.password} onToggle={() => toggleField('password')}
@@ -163,7 +192,7 @@ export function CredentialDetail({ credentialId, open, onOpenChange, onEdit }: C
                 variant="outline"
                 size="sm"
                 onClick={() => onEdit({
-                  id: data.id, title: data.title, username: data.username, tags: data.tags,
+                  id: data.id, title: data.title, username: data.username, address: data.address, tags: data.tags,
                   password: data.password, apiKey: data.apiKey, totpSecret: data.totpSecret, notes: data.notes,
                 })}
               >

@@ -10,6 +10,7 @@ export const credentials = sqliteTable('credentials', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
   username: text('username'),
+  address: text('address'),
   // SENSITIVE: Must be AES-256-GCM encrypted before saving
   passwordCipher: text('password_cipher'),
   apiKeyCipher: text('api_key_cipher'),

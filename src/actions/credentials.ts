@@ -30,6 +30,7 @@ export async function createCredential(
     id,
     title: data.title,
     username: data.username || null,
+    address: data.address || null,
     passwordCipher: data.password ? encrypt(data.password, dek) : null,
     apiKeyCipher: data.apiKey ? encrypt(data.apiKey, dek) : null,
     totpSecretCipher: data.totpSecret ? encrypt(data.totpSecret, dek) : null,
@@ -53,6 +54,7 @@ export async function getCredentials() {
       id: credentials.id,
       title: credentials.title,
       username: credentials.username,
+      address: credentials.address,
       tags: credentials.tags,
       hasPassword: credentials.passwordCipher,
       hasApiKey: credentials.apiKeyCipher,
@@ -91,6 +93,7 @@ export async function getCredentialById(
     id: row.id,
     title: row.title,
     username: row.username,
+    address: row.address,
     tags: row.tags ? JSON.parse(row.tags) as string[] : [],
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -131,6 +134,7 @@ export async function updateCredential(
 
   if (data.title !== undefined) updates.title = data.title;
   if (data.username !== undefined) updates.username = data.username ?? null;
+  if (data.address !== undefined) updates.address = data.address ?? null;
   if (data.password !== undefined) updates.passwordCipher = data.password ? encrypt(data.password, dek) : null;
   if (data.apiKey !== undefined) updates.apiKeyCipher = data.apiKey ? encrypt(data.apiKey, dek) : null;
   if (data.totpSecret !== undefined) updates.totpSecretCipher = data.totpSecret ? encrypt(data.totpSecret, dek) : null;

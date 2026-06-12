@@ -34,6 +34,7 @@ interface CredentialDialogProps {
     id: string;
     title: string;
     username: string | null;
+    address: string | null;
     tags: string[];
     password?: string | null;
     apiKey?: string | null;
@@ -52,6 +53,7 @@ export function CredentialDialog({ open, onOpenChange, credential }: CredentialD
   const [showTotpSecret, setShowTotpSecret] = useState(false);
   const [title, setTitle] = useState('');
   const [username, setUsername] = useState('');
+  const [address, setAddress] = useState('');
   const [password, setPassword] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [totpSecret, setTotpSecret] = useState('');
@@ -73,6 +75,7 @@ export function CredentialDialog({ open, onOpenChange, credential }: CredentialD
       loadTags();
       setTitle(credential?.title ?? '');
       setUsername(credential?.username ?? '');
+      setAddress(credential?.address ?? '');
       setSelectedTagIds(credential?.tags ?? []);
       setPassword(credential?.password ?? '');
       setApiKey(credential?.apiKey ?? '');
@@ -111,8 +114,8 @@ export function CredentialDialog({ open, onOpenChange, credential }: CredentialD
     }
 
     const input = isEdit
-      ? { title, username: username || null, password: password || null, apiKey: apiKey || null, totpSecret: totpSecret || null, notes: notes || null, tags: selectedTagIds }
-      : { title, username: username || undefined, password: password || undefined, apiKey: apiKey || undefined, totpSecret: totpSecret || undefined, notes: notes || undefined, tags: selectedTagIds };
+      ? { title, username: username || null, address: address || null, password: password || null, apiKey: apiKey || null, totpSecret: totpSecret || null, notes: notes || null, tags: selectedTagIds }
+      : { title, username: username || undefined, address: address || undefined, password: password || undefined, apiKey: apiKey || undefined, totpSecret: totpSecret || undefined, notes: notes || undefined, tags: selectedTagIds };
 
     try {
       let result;
@@ -139,6 +142,7 @@ export function CredentialDialog({ open, onOpenChange, credential }: CredentialD
   function resetForm() {
     setTitle('');
     setUsername('');
+    setAddress('');
     setPassword('');
     setApiKey('');
     setTotpSecret('');
@@ -183,6 +187,17 @@ export function CredentialDialog({ open, onOpenChange, credential }: CredentialD
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="用户名或邮箱"
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cred-address">地址</Label>
+              <Input
+                id="cred-address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="网址或 IP 地址"
                 autoComplete="off"
               />
             </div>

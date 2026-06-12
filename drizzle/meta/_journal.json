@@ -15,6 +15,13 @@
       "when": 1781164493392,
       "tag": "0001_mushy_fat_cobra",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1781230893483,
+      "tag": "0002_powerful_jane_foster",
+      "breakpoints": true
     }
   ]
 }

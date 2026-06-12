@@ -31,6 +31,7 @@ export const updateTagSchema = z.object({
 export const createCredentialSchema = z.object({
   title: z.string().min(1, '标题不能为空').max(100),
   username: z.string().max(200).optional().or(z.literal('')),
+  address: z.string().max(500).optional().or(z.literal('')),
   password: z.string().optional().or(z.literal('')),
   apiKey: z.string().optional().or(z.literal('')),
   totpSecret: z.string().optional().or(z.literal('')),
@@ -41,6 +42,7 @@ export const createCredentialSchema = z.object({
 export const updateCredentialSchema = z.object({
   title: z.string().min(1, '标题不能为空').max(100).optional(),
   username: z.string().max(200).nullish(),
+  address: z.string().max(500).nullish(),
   password: z.string().nullish(),
   apiKey: z.string().nullish(),
   totpSecret: z.string().nullish(),

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Plus, Search, KeyRound, User, Check, Key, Tags } from 'lucide-react';
+import { Plus, Search, KeyRound, User, Check, Key, Tags, Copy } from 'lucide-react';
 import { EmptyVault, EmptySearch } from '@/components/ui/illustrations';
 import { toast } from 'sonner';
 import { getCredentials, getCredentialById } from '@/actions/credentials';
@@ -35,6 +35,7 @@ export default function CredentialsPage() {
     id: string;
     title: string;
     username: string | null;
+    address: string | null;
     tags: string[];
     password?: string | null;
     apiKey?: string | null;
@@ -133,7 +134,7 @@ export default function CredentialsPage() {
   }
 
   function handleEdit(cred: {
-    id: string; title: string; username: string | null; tags: string[];
+    id: string; title: string; username: string | null; address: string | null; tags: string[];
     password?: string | null; apiKey?: string | null; totpSecret?: string | null; notes?: string | null;
   }) {
     setEditCred(cred);
@@ -262,16 +263,32 @@ export default function CredentialsPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">{cred.title}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {cred.username && (
-                          <span className="flex items-center gap-1 truncate">
-                            <User className="h-3 w-3 shrink-0" /> {cred.username}
-                          </span>
-                        )}
-                        <span className="shrink-0">
-                          {new Date(cred.updatedAt).toLocaleDateString('zh-CN')}
-                        </span>
-                      </div>
+                      {cred.username && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                          <User className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{cred.username}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 ml-0.5"
+                            title="复制用户名"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copy(cred.username!);
+                              triggerCopyFeedback(`copy-username-${cred.id}`);
+                              toast.success('用户名已复制');
+                            }}
+                          >
+                            {copyFeedback[`copy-username-${cred.id}`] ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                          </Button>
+                        </div>
+                      )}
+                      {cred.address && (
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">{cred.address}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {new Date(cred.updatedAt).toLocaleDateString('zh-CN')}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
