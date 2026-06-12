@@ -131,3 +131,18 @@
     @apply font-sans;
   }
 }
+
+@keyframes item-enter {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes item-exit {
+  from { opacity: 1; transform: translateX(0); max-height: 48px; }
+  to { opacity: 0; transform: translateX(20px); max-height: 0; padding: 0; margin: 0; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

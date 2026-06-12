@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { tasks, credentials } from '@/lib/db/schema';
 import { createTaskSchema, updateTaskSchema, taskStatusSchema } from '@/lib/validation';
-import { eq, desc, asc, count } from 'drizzle-orm';
+import { eq, desc, count } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import type { TaskStatus } from '@/lib/validation';
 import { syncTaskToWorkLog } from '@/actions/work-logs';

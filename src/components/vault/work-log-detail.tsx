@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
@@ -13,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, Pencil, Trash2, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { getWorkLogById } from '@/actions/work-logs';
 
 interface WorkLogItemData {
@@ -92,25 +92,28 @@ export function WorkLogDetail({ workLogId, open, onOpenChange, onEdit, onDelete 
         {data && !loading && (
           <div className="space-y-4">
             {data.projectProgress && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">项目进度</p>
-                <div className="rounded-md border border-border p-3 text-sm whitespace-pre-wrap bg-muted/30">
+              <div className="p-4 rounded-lg bg-muted/40 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">项目进度</p>
+                <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
                   {data.projectProgress}
-                </div>
+                </p>
               </div>
             )}
 
             {activeItems.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">工作条目</p>
-                <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">工作条目</p>
+                <div>
                   {activeItems.map((item, idx) => (
-                    <div key={item.id} className="flex items-start gap-2 py-1">
-                      <span className="text-sm text-muted-foreground w-6 text-right shrink-0">{idx + 1}.</span>
-                      <span className="text-sm">{item.content}</span>
-                      {item.sourceTaskId && (
-                        <Badge variant="secondary" className="text-xs ml-auto shrink-0">任务同步</Badge>
+                    <div
+                      key={item.id}
+                      className={cn(
+                        'flex items-start gap-2 py-1.5 px-3 -mx-3 rounded-md',
+                        idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'
                       )}
+                    >
+                      <span className="text-sm text-muted-foreground w-6 text-right shrink-0">{idx + 1}.</span>
+                      <span className="text-sm whitespace-pre-wrap">{item.content}</span>
                     </div>
                   ))}
                 </div>
@@ -119,11 +122,17 @@ export function WorkLogDetail({ workLogId, open, onOpenChange, onEdit, onDelete 
 
             {cancelledItems.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">已取消</p>
-                <div className="space-y-1">
-                  {cancelledItems.map((item) => (
-                    <div key={item.id} className="flex items-start gap-2 py-1 opacity-50">
-                      <span className="text-sm line-through">{item.content}</span>
+                <p className="text-xs font-medium text-muted-foreground">已取消</p>
+                <div>
+                  {cancelledItems.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        'flex items-start gap-2 py-1.5 px-3 -mx-3 rounded-md',
+                        idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'
+                      )}
+                    >
+                      <span className="text-sm text-muted-foreground line-through whitespace-pre-wrap">{item.content}</span>
                     </div>
                   ))}
                 </div>
@@ -140,12 +149,12 @@ export function WorkLogDetail({ workLogId, open, onOpenChange, onEdit, onDelete 
               <Button variant="outline" size="sm" onClick={() => onEdit(data.id)}>
                 <Pencil className="mr-1 h-3 w-3" /> 编辑
               </Button>
-              <Button variant="destructive" size="sm" className="ml-auto" onClick={() => onDelete(data.id)}>
+              <Button variant="ghost" size="sm" className="ml-auto text-destructive" onClick={() => onDelete(data.id)}>
                 <Trash2 className="mr-1 h-3 w-3" /> 删除
               </Button>
             </div>
 
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground/60 pt-2 border-t space-y-0.5">
               <p>创建: {new Date(data.createdAt).toLocaleString('zh-CN')}</p>
               <p>更新: {new Date(data.updatedAt).toLocaleString('zh-CN')}</p>
             </div>

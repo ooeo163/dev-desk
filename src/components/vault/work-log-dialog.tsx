@@ -13,9 +13,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Plus, X, GripVertical } from 'lucide-react';
+import { Loader2, Plus, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
-import { getWorkLogById, createWorkLog, updateWorkLog, addWorkLogItem, deleteWorkLogItem } from '@/actions/work-logs';
+import { getWorkLogById, createWorkLog, updateWorkLog, addWorkLogItem, deleteWorkLogItem, updateWorkLogItem } from '@/actions/work-logs';
 
 interface WorkLogItemData {
   id: string;
@@ -48,7 +48,15 @@ function getSunday(monday: Date): Date {
 }
 
 function formatDateInput(date: Date): string {
-  return date.toISOString().split('T')[0];
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function parseLocalDate(value: string): Date {
+  const [y, m, d] = value.split('-').map(Number);
+  return new Date(y, m - 1, d);
 }
 
 export function WorkLogDialog({ open, onOpenChange, workLogId }: WorkLogDialogProps) {
@@ -64,6 +72,7 @@ export function WorkLogDialog({ open, onOpenChange, workLogId }: WorkLogDialogPr
   useEffect(() => {
     if (open) {
       if (workLogId) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- reset form state when dialog opens
         setLoading(true);
         getWorkLogById(workLogId)
           .then((data) => {
@@ -151,15 +160,35 @@ export function WorkLogDialog({ open, onOpenChange, workLogId }: WorkLogDialogPr
         });
 
         const existing = await getWorkLogById(workLogId);
-        const existingIds = new Set(existing?.items.map((i) => i.id) ?? []);
+        const existingMap = new Map(existing?.items.map((i) => [i.id, i]) ?? []);
         const currentIds = new Set(items.filter((i) => !i.id.startsWith('temp-')).map((i) => i.id));
 
-        for (const id of existingIds) {
+        // 删除已移除的 items
+        for (const id of existingMap.keys()) {
           if (!currentIds.has(id)) {
             await deleteWorkLogItem(id);
           }
         }
 
+        // 更新已有 items 的变更（isCancelled、content、sortOrder）
+        for (const item of items) {
+          if (!item.id.startsWith('temp-')) {
+            const original = existingMap.get(item.id);
+            if (original && (
+              original.isCancelled !== item.isCancelled ||
+              original.content !== item.content ||
+              original.sortOrder !== item.sortOrder
+            )) {
+              await updateWorkLogItem(item.id, {
+                isCancelled: item.isCancelled,
+                content: item.content,
+                sortOrder: item.sortOrder,
+              });
+            }
+          }
+        }
+
+        // 添加新 items
         for (const item of items) {
           if (item.id.startsWith('temp-')) {
             await addWorkLogItem(workLogId, { content: item.content, isCancelled: item.isCancelled });
@@ -191,7 +220,7 @@ export function WorkLogDialog({ open, onOpenChange, workLogId }: WorkLogDialogPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-[85vh] flex flex-col sm:max-w-2xl">
+      <DialogContent className="max-h-[85vh] flex flex-col sm:max-w-2xl">
         <DialogHeader className="shrink-0">
           <DialogTitle>{isEdit ? '编辑工作记录' : '新建工作记录'}</DialogTitle>
           <DialogDescription>
@@ -216,7 +245,7 @@ export function WorkLogDialog({ open, onOpenChange, workLogId }: WorkLogDialogPr
                     onChange={(e) => {
                       setWeekStart(e.target.value);
                       if (e.target.value) {
-                        const monday = new Date(e.target.value);
+                        const monday = parseLocalDate(e.target.value);
                         setWeekEnd(formatDateInput(getSunday(monday)));
                       }
                     }}
@@ -252,49 +281,55 @@ export function WorkLogDialog({ open, onOpenChange, workLogId }: WorkLogDialogPr
                   {items.map((item, idx) => (
                     <div
                       key={item.id}
-                      className={`flex items-center gap-2 group ${item.isCancelled ? 'opacity-50' : ''}`}
+                      className={`flex items-start gap-2 group ${item.isCancelled ? 'opacity-50' : ''}`}
                     >
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
-                          className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-grab"
+                          className="h-6 w-6 flex items-center justify-center text-muted-foreground/40 hover:text-foreground transition-colors disabled:opacity-30"
                           disabled={idx === 0}
                           onClick={() => handleMoveItem(idx, idx - 1)}
                         >
-                          <GripVertical className="h-3 w-3" />
+                          <ChevronUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          className="h-6 w-6 flex items-center justify-center text-muted-foreground/40 hover:text-foreground transition-colors disabled:opacity-30"
+                          disabled={idx === items.length - 1}
+                          onClick={() => handleMoveItem(idx, idx + 1)}
+                        >
+                          <ChevronDown className="h-3 w-3" />
                         </button>
                         <span className="text-xs text-muted-foreground w-5 text-right">{idx + 1}</span>
                       </div>
-                      <Input
+                      <Textarea
                         value={item.content}
                         onChange={(e) => handleItemContentChange(item.id, e.target.value)}
-                        className={`flex-1 ${item.isCancelled ? 'line-through' : ''}`}
-                        disabled={!!item.sourceTaskId}
+                        className={`flex-1 resize-none min-h-[2.25rem] ${item.isCancelled ? 'line-through' : ''}`}
+                        rows={1}
                       />
                       <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleCancel(item.id)}
+                          className={`h-6 px-1.5 flex items-center justify-center rounded-md text-xs transition-colors duration-200 ${
+                            item.isCancelled
+                              ? 'text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30'
+                              : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted'
+                          }`}
+                          title={item.isCancelled ? '恢复' : '标记取消'}
+                        >
+                          {item.isCancelled ? '恢复' : '取消'}
+                        </button>
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7"
-                          title={item.isCancelled ? '恢复' : '标记取消'}
-                          onClick={() => handleToggleCancel(item.id)}
+                          className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => handleRemoveItem(item.id)}
                         >
-                          <span className={`text-xs ${item.isCancelled ? 'text-green-500' : 'text-muted-foreground'}`}>
-                            {item.isCancelled ? '恢复' : '取消'}
-                          </span>
+                          <X className="h-3 w-3" />
                         </Button>
-                        {!item.sourceTaskId && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100"
-                            onClick={() => handleRemoveItem(item.id)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        )}
                       </div>
                     </div>
                   ))}

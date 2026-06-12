@@ -94,8 +94,8 @@ export async function getOrCreateCurrentWeekWorkLog(): Promise<string> {
     .from(workLogs)
     .where(
       and(
-        gte(workLogs.weekStart, start),
-        lte(workLogs.weekStart, end)
+        lte(workLogs.weekStart, end),
+        gte(workLogs.weekEnd, start)
       )
     )
     .get();
@@ -112,8 +112,8 @@ export async function getOrCreateCurrentWeekWorkLog(): Promise<string> {
     .from(workLogs)
     .where(
       and(
-        gte(workLogs.weekStart, prevWeekStart),
-        lte(workLogs.weekStart, prevWeekEnd)
+        lte(workLogs.weekStart, prevWeekEnd),
+        gte(workLogs.weekEnd, prevWeekStart)
       )
     )
     .get();
@@ -167,13 +167,32 @@ export async function createWorkLog(
   }
 
   const data = parsed.data;
+  const weekStart = new Date(data.weekStart);
+  const weekEnd = new Date(data.weekEnd);
+
+  // 检查是否存在重叠周的记录
+  const existing = db
+    .select()
+    .from(workLogs)
+    .where(
+      and(
+        lte(workLogs.weekStart, weekEnd),
+        gte(workLogs.weekEnd, weekStart)
+      )
+    )
+    .get();
+
+  if (existing) {
+    return { success: false, error: '该周已有工作记录，不能重复创建' };
+  }
+
   const now = new Date();
   const id = nanoid();
 
   db.insert(workLogs).values({
     id,
-    weekStart: new Date(data.weekStart),
-    weekEnd: new Date(data.weekEnd),
+    weekStart,
+    weekEnd,
     projectProgress: data.projectProgress || null,
     createdAt: now,
     updatedAt: now,
@@ -312,8 +331,8 @@ export async function syncTaskToWorkLog(taskTitle: string, taskId: string): Prom
     .from(workLogs)
     .where(
       and(
-        gte(workLogs.weekStart, start),
-        lte(workLogs.weekStart, end)
+        lte(workLogs.weekStart, end),
+        gte(workLogs.weekEnd, start)
       )
     )
     .get();
