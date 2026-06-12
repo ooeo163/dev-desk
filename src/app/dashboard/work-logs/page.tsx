@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -13,10 +15,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Trash2, Pencil, Calendar, ListChecks, NotebookPen, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Pencil, Calendar, ListChecks, NotebookPen, ChevronRight, X, Save } from 'lucide-react';
 import { EmptyVault } from '@/components/ui/illustrations';
 import { toast } from 'sonner';
-import { getWorkLogs, deleteWorkLog, getOrCreateCurrentWeekWorkLog } from '@/actions/work-logs';
+import {
+  getWorkLogs,
+  deleteWorkLog,
+  getOrCreateCurrentWeekWorkLog,
+  updateWorkLog,
+  addWorkLogItem,
+  updateWorkLogItem,
+  deleteWorkLogItem,
+} from '@/actions/work-logs';
 import { WorkLogDialog } from '@/components/vault/work-log-dialog';
 import { WorkLogDetail } from '@/components/vault/work-log-detail';
 
@@ -74,6 +84,14 @@ export default function WorkLogsPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id?: string }>({ open: false });
 
+  // Inline editing state
+  const [editingProgress, setEditingProgress] = useState(false);
+  const [progressValue, setProgressValue] = useState('');
+  const [editingItems, setEditingItems] = useState<WorkLogItem[]>([]);
+  const [newItemContent, setNewItemContent] = useState('');
+  const [saving, setSaving] = useState(false);
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const { data: workLogs = [], refetch } = useQuery({
     queryKey: ['work-logs'],
     queryFn: getWorkLogs,
@@ -82,11 +100,95 @@ export default function WorkLogsPage() {
   const currentWeek = workLogs.find((log) => isCurrentWeek(log.weekStart, log.weekEnd));
   const historyLogs = workLogs.filter((log) => !isCurrentWeek(log.weekStart, log.weekEnd));
 
+  useEffect(() => {
+    if (currentWeek) {
+      setProgressValue(currentWeek.projectProgress ?? '');
+      setEditingItems([...currentWeek.items]);
+    }
+  }, [currentWeek]);
+
+  async function handleProgressSave() {
+    if (!currentWeek) return;
+    setEditingProgress(false);
+    setSaving(true);
+    try {
+      await updateWorkLog(currentWeek.id, { projectProgress: progressValue });
+      refetch();
+    } catch {
+      toast.error('保存失败');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleItemContentChange(id: string, content: string) {
+    setEditingItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, content } : item))
+    );
+    setSaving(true);
+    try {
+      await updateWorkLogItem(id, { content });
+      refetch();
+    } catch {
+      toast.error('保存失败');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleItemToggleCancel(id: string) {
+    const item = editingItems.find((i) => i.id === id);
+    if (!item) return;
+    const newCancelled = !item.isCancelled;
+    setEditingItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, isCancelled: newCancelled } : i))
+    );
+    setSaving(true);
+    try {
+      await updateWorkLogItem(id, { isCancelled: newCancelled });
+      refetch();
+    } catch {
+      toast.error('保存失败');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleItemDelete(id: string) {
+    setEditingItems((prev) => prev.filter((i) => i.id !== id));
+    setSaving(true);
+    try {
+      await deleteWorkLogItem(id);
+      refetch();
+    } catch {
+      toast.error('删除失败');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleAddItem() {
+    if (!currentWeek || !newItemContent.trim()) return;
+    const content = newItemContent.trim();
+    setNewItemContent('');
+    setSaving(true);
+    try {
+      const result = await addWorkLogItem(currentWeek.id, { content });
+      if (result.success) {
+        refetch();
+      } else {
+        toast.error('添加失败');
+      }
+    } catch {
+      toast.error('添加失败');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleCreateCurrentWeek() {
     try {
-      const id = await getOrCreateCurrentWeekWorkLog();
-      setSelectedId(id);
-      setDetailOpen(true);
+      await getOrCreateCurrentWeekWorkLog();
       refetch();
     } catch {
       toast.error('创建本周记录失败');
@@ -156,7 +258,7 @@ export default function WorkLogsPage() {
         </div>
       </div>
 
-      {/* Current Week Panel */}
+      {/* Current Week Panel - Inline Editable */}
       {currentWeek ? (
         <Card className="p-6 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
           <div className="flex items-center justify-between mb-4">
@@ -172,45 +274,154 @@ export default function WorkLogsPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => handleEdit(currentWeek.id)}>
-                <Pencil className="mr-1 h-3 w-3" /> 编辑
-              </Button>
+              {saving && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Save className="h-3 w-3 animate-pulse" /> 保存中...
+                </span>
+              )}
               <Button variant="outline" size="sm" onClick={() => handleViewDetail(currentWeek.id)}>
                 查看详情 <ChevronRight className="ml-1 h-3 w-3" />
               </Button>
             </div>
           </div>
 
-          {currentWeek.projectProgress && (
-            <div className="mb-4 p-3 rounded-lg bg-muted/50 border">
-              <p className="text-xs font-medium text-muted-foreground mb-1">项目进度</p>
-              <div className="text-sm whitespace-pre-wrap">{currentWeek.projectProgress}</div>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            {currentWeek.items.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">暂无工作条目，点击编辑添加</p>
-            ) : (
-              currentWeek.items.map((item, idx) => (
-                <div
-                  key={item.id}
-                  className={`flex items-start gap-2 py-1 ${item.isCancelled ? 'opacity-50' : ''}`}
+          {/* Project Progress - Inline Editable */}
+          <div className="mb-4 p-3 rounded-lg bg-muted/50 border">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs font-medium text-muted-foreground">项目进度</p>
+              {!editingProgress && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setEditingProgress(true)}
                 >
-                  <span className="text-sm text-muted-foreground w-6 text-right shrink-0">{idx + 1}.</span>
-                  <span className={`text-sm ${item.isCancelled ? 'line-through' : ''}`}>
-                    {item.content}
-                  </span>
-                  {item.sourceTaskId && (
-                    <Badge variant="secondary" className="text-xs ml-auto shrink-0">任务同步</Badge>
-                  )}
+                  <Pencil className="h-3 w-3 mr-1" /> 编辑
+                </Button>
+              )}
+            </div>
+            {editingProgress ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={progressValue}
+                  onChange={(e) => setProgressValue(e.target.value)}
+                  placeholder="当前进行中的项目或模块状态..."
+                  rows={3}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                      handleProgressSave();
+                    }
+                  }}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditingProgress(false);
+                      setProgressValue(currentWeek.projectProgress ?? '');
+                    }}
+                  >
+                    取消
+                  </Button>
+                  <Button size="sm" onClick={handleProgressSave}>
+                    保存
+                  </Button>
                 </div>
-              ))
+              </div>
+            ) : (
+              <div
+                className="text-sm whitespace-pre-wrap cursor-pointer hover:text-foreground/80 min-h-[24px]"
+                onClick={() => setEditingProgress(true)}
+              >
+                {progressValue || <span className="text-muted-foreground italic">点击添加项目进度...</span>}
+              </div>
             )}
           </div>
 
+          {/* Work Items - Inline Editable */}
+          <div className="space-y-2">
+            {editingItems.length === 0 && !newItemContent ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                暂无工作条目，在下方添加
+              </p>
+            ) : (
+              editingItems.map((item, idx) => (
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-2 group ${item.isCancelled ? 'opacity-60' : ''}`}
+                >
+                  <span className="text-sm text-muted-foreground w-6 text-right shrink-0">{idx + 1}.</span>
+                  <Input
+                    value={item.content}
+                    onChange={(e) => {
+                      const newContent = e.target.value;
+                      setEditingItems((prev) =>
+                        prev.map((i) => (i.id === item.id ? { ...i, content: newContent } : i))
+                      );
+                    }}
+                    onBlur={(e) => handleItemContentChange(item.id, e.target.value)}
+                    className={`flex-1 h-8 text-sm ${item.isCancelled ? 'line-through' : ''}`}
+                    disabled={!!item.sourceTaskId}
+                  />
+                  {item.sourceTaskId && (
+                    <Badge variant="secondary" className="text-xs shrink-0">任务同步</Badge>
+                  )}
+                  <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      title={item.isCancelled ? '恢复' : '标记取消'}
+                      onClick={() => handleItemToggleCancel(item.id)}
+                    >
+                      <span className={`text-xs ${item.isCancelled ? 'text-green-500' : 'text-muted-foreground'}`}>
+                        {item.isCancelled ? '恢复' : '取消'}
+                      </span>
+                    </Button>
+                    {!item.sourceTaskId && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive"
+                        onClick={() => handleItemDelete(item.id)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+
+            {/* Add new item */}
+            <div className="flex gap-2 mt-2">
+              <Input
+                value={newItemContent}
+                onChange={(e) => setNewItemContent(e.target.value)}
+                placeholder="输入新的工作条目，回车添加..."
+                className="h-8 text-sm"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddItem();
+                  }
+                }}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddItem}
+                disabled={!newItemContent.trim()}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
           <div className="mt-4 pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
-            <span>共 {currentWeek.items.length} 条</span>
+            <span>共 {editingItems.length} 条</span>
             <span>更新于 {getRelativeTime(currentWeek.updatedAt)}</span>
           </div>
         </Card>
