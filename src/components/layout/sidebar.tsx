@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { KeyRound, CheckSquare, Settings, Shield, LayoutDashboard, ChevronLeft } from 'lucide-react';
+import { KeyRound, CheckSquare, Settings, Shield, LayoutDashboard, ChevronLeft, NotebookPen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,7 @@ const navItems = [
   { href: '/dashboard', label: '仪表板', icon: LayoutDashboard },
   { href: '/dashboard/credentials', label: '凭证管理', icon: KeyRound },
   { href: '/dashboard/tasks', label: '任务管理', icon: CheckSquare },
+  { href: '/dashboard/work-logs', label: '工作记录', icon: NotebookPen },
 ];
 
 interface SidebarProps {

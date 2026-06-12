@@ -69,6 +69,33 @@ export const updateTaskSchema = z.object({
   credentialId: z.string().nullish(),
 });
 
+// ── Work Logs ─────────────────────────────────────────
+export const createWorkLogSchema = z.object({
+  weekStart: z.string().min(1, '请选择周开始日期'),
+  weekEnd: z.string().min(1, '请选择周结束日期'),
+  projectProgress: z.string().optional().or(z.literal('')),
+  items: z.array(z.object({
+    content: z.string().min(1, '条目内容不能为空'),
+  })).optional(),
+});
+
+export const updateWorkLogSchema = z.object({
+  weekStart: z.string().optional(),
+  weekEnd: z.string().optional(),
+  projectProgress: z.string().nullish(),
+});
+
+export const createWorkLogItemSchema = z.object({
+  content: z.string().min(1, '条目内容不能为空'),
+  isCancelled: z.boolean().default(false),
+});
+
+export const updateWorkLogItemSchema = z.object({
+  content: z.string().min(1, '条目内容不能为空').optional(),
+  isCancelled: z.boolean().optional(),
+  sortOrder: z.number().int().optional(),
+});
+
 // ── Type exports ──────────────────────────────────────
 export type CreateTagInput = z.infer<typeof createTagSchema>;
 export type UpdateTagInput = z.infer<typeof updateTagSchema>;
@@ -77,3 +104,7 @@ export type UpdateCredentialInput = z.infer<typeof updateCredentialSchema>;
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
+export type CreateWorkLogInput = z.infer<typeof createWorkLogSchema>;
+export type UpdateWorkLogInput = z.infer<typeof updateWorkLogSchema>;
+export type CreateWorkLogItemInput = z.infer<typeof createWorkLogItemSchema>;
+export type UpdateWorkLogItemInput = z.infer<typeof updateWorkLogItemSchema>;

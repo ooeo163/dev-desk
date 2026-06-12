@@ -11,7 +11,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { KeyRound, CheckSquare, Plus, Lock, Sun, Moon } from 'lucide-react';
+import { KeyRound, CheckSquare, Plus, Lock, Sun, Moon, NotebookPen } from 'lucide-react';
 import { EmptySearch } from '@/components/ui/illustrations';
 import { useTheme } from 'next-themes';
 import { useCommandPalette } from '@/hooks/use-command-palette';
@@ -63,6 +63,9 @@ export function CommandPalette({
       case 'new-task':
         router.push('/dashboard/tasks?action=create');
         break;
+      case 'work-logs':
+        router.push('/dashboard/work-logs');
+        break;
       case 'lock':
         lock();
         lockVault();
@@ -85,7 +88,7 @@ export function CommandPalette({
 
   return (
     <CommandDialog open={isOpen} onOpenChange={setIsOpen}>
-      <CommandInput placeholder="搜索凭证、任务或操作..." />
+      <CommandInput placeholder="搜索凭证、任务、工作记录或操作..." />
       <CommandList>
         <CommandEmpty>
           <EmptySearch className="mx-auto h-12 w-12 text-muted-foreground/30 mb-2" />
@@ -98,6 +101,9 @@ export function CommandPalette({
           </CommandItem>
           <CommandItem value="new-task" onSelect={() => handleSelect('new-task')}>
             <Plus className="mr-2 h-4 w-4" /> 新建任务
+          </CommandItem>
+          <CommandItem value="work-logs" onSelect={() => handleSelect('work-logs')}>
+            <NotebookPen className="mr-2 h-4 w-4" /> 工作记录
           </CommandItem>
           <CommandItem value="lock" onSelect={() => handleSelect('lock')}>
             <Lock className="mr-2 h-4 w-4" /> 锁定工作台

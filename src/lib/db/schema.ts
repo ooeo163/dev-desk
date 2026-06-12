@@ -31,6 +31,25 @@ export const tasks = sqliteTable('tasks', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
+export const workLogs = sqliteTable('work_logs', {
+  id: text('id').primaryKey(),
+  weekStart: integer('week_start', { mode: 'timestamp' }).notNull(),
+  weekEnd: integer('week_end', { mode: 'timestamp' }).notNull(),
+  projectProgress: text('project_progress'), // 项目进度，换行分隔
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
+export const workLogItems = sqliteTable('work_log_items', {
+  id: text('id').primaryKey(),
+  workLogId: text('work_log_id').notNull().references(() => workLogs.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  isCancelled: integer('is_cancelled', { mode: 'boolean' }).default(false),
+  sortOrder: integer('sort_order').default(0),
+  sourceTaskId: text('source_task_id'), // 关联任务ID，用于去重
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+});
+
 export const vaultMeta = sqliteTable('vault_meta', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
