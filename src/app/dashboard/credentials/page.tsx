@@ -7,20 +7,29 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Plus, Search, KeyRound, User, Check, Key } from 'lucide-react';
+import { Plus, Search, KeyRound, User, Check, Key, Tags } from 'lucide-react';
 import { EmptyVault, EmptySearch } from '@/components/ui/illustrations';
 import { toast } from 'sonner';
 import { getCredentials, getCredentialById } from '@/actions/credentials';
+import { getTags } from '@/actions/tags';
 import { CredentialDialog } from '@/components/vault/credential-dialog';
 import { CredentialDetail } from '@/components/vault/credential-detail';
+import { TagManager } from '@/components/vault/tag-manager';
 import { useClipboard } from '@/hooks/use-clipboard';
 import { useVaultStore } from '@/store/vault';
 
+interface Tag {
+  id: string;
+  name: string;
+  createdAt: Date;
+}
+
 export default function CredentialsPage() {
   const [search, setSearch] = useState('');
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editCred, setEditCred] = useState<{
     id: string;
@@ -36,6 +45,11 @@ export default function CredentialsPage() {
   const { data: credentials = [], refetch } = useQuery({
     queryKey: ['credentials'],
     queryFn: getCredentials,
+  });
+
+  const { data: tags = [], refetch: refetchTags } = useQuery({
+    queryKey: ['tags'],
+    queryFn: getTags,
   });
 
   const searchParams = useSearchParams();
@@ -87,18 +101,31 @@ export default function CredentialsPage() {
     }
   }
 
+  // Create tag id to name mapping
+  const tagMap = new Map(tags.map((t) => [t.id, t.name]));
+
+  // Get tag name by id
+  function getTagName(id: string): string {
+    return tagMap.get(id) || id;
+  }
+
   // Filter credentials
   const filtered = credentials.filter((cred) => {
     const matchSearch =
       !search ||
       cred.title.toLowerCase().includes(search.toLowerCase()) ||
       (cred.username ?? '').toLowerCase().includes(search.toLowerCase());
-    const matchTag = !selectedTag || cred.tags.includes(selectedTag);
+    const matchTag = !selectedTagId || cred.tags.includes(selectedTagId);
     return matchSearch && matchTag;
   });
 
-  // Collect all unique tags
-  const allTags = Array.from(new Set(credentials.flatMap((c) => c.tags)));
+  // Collect all unique tag ids from credentials
+  const allTagIds = Array.from(new Set(credentials.flatMap((c) => c.tags)));
+
+  // Get tags that are actually used by credentials
+  const usedTags = allTagIds
+    .map((id) => tags.find((t) => t.id === id))
+    .filter(Boolean) as Tag[];
 
   function handleCreate() {
     setEditCred(null);
@@ -119,12 +146,21 @@ export default function CredentialsPage() {
       setDialogOpen(false);
       setEditCred(null);
       refetch();
+      refetchTags();
     }
   }
 
   function handleDetailClose(open: boolean) {
     if (!open) {
       setDetailOpen(false);
+      refetch();
+    }
+  }
+
+  function handleTagManagerClose(open: boolean) {
+    if (!open) {
+      setTagManagerOpen(false);
+      refetchTags();
       refetch();
     }
   }
@@ -136,9 +172,14 @@ export default function CredentialsPage() {
           <h1 className="text-2xl font-bold tracking-tight">凭证管理</h1>
           <p className="text-muted-foreground">安全存储和管理你的凭证信息</p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" /> 新建凭证
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setTagManagerOpen(true)}>
+            <Tags className="mr-2 h-4 w-4" /> 标签管理
+          </Button>
+          <Button onClick={handleCreate}>
+            <Plus className="mr-2 h-4 w-4" /> 新建凭证
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -152,23 +193,23 @@ export default function CredentialsPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        {allTags.length > 0 && (
+        {usedTags.length > 0 && (
           <div className="flex flex-wrap gap-1">
             <Badge
-              variant={selectedTag === null ? 'default' : 'outline'}
+              variant={selectedTagId === null ? 'default' : 'outline'}
               className="cursor-pointer"
-              onClick={() => setSelectedTag(null)}
+              onClick={() => setSelectedTagId(null)}
             >
               全部
             </Badge>
-            {allTags.map((tag) => (
+            {usedTags.map((tag) => (
               <Badge
-                key={tag}
-                variant={selectedTag === tag ? 'default' : 'outline'}
+                key={tag.id}
+                variant={selectedTagId === tag.id ? 'default' : 'outline'}
                 className="cursor-pointer"
-                onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+                onClick={() => setSelectedTagId(selectedTagId === tag.id ? null : tag.id)}
               >
-                {tag}
+                {tag.name}
               </Badge>
             ))}
           </div>
@@ -178,7 +219,7 @@ export default function CredentialsPage() {
       {/* Credentials List */}
       {filtered.length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-16">
-          {search || selectedTag ? (
+          {search || selectedTagId ? (
             <>
               <EmptySearch className="mb-4 h-20 w-20 text-muted-foreground/40" />
               <p className="text-muted-foreground">没有找到匹配的凭证</p>
@@ -207,9 +248,9 @@ export default function CredentialsPage() {
             >
               <div className="space-y-2">
                 <div className="flex flex-wrap gap-1 min-h-[22px]">
-                  {cred.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="text-xs">
-                      {tag}
+                  {cred.tags.map((tagId) => (
+                    <Badge key={tagId} variant="secondary" className="text-xs">
+                      {getTagName(tagId)}
                     </Badge>
                   ))}
                 </div>
@@ -275,7 +316,6 @@ export default function CredentialsPage() {
         open={dialogOpen}
         onOpenChange={handleDialogClose}
         credential={editCred}
-        existingTags={allTags}
       />
 
       {/* Detail Dialog */}
@@ -284,6 +324,12 @@ export default function CredentialsPage() {
         open={detailOpen}
         onOpenChange={handleDetailClose}
         onEdit={handleEdit}
+      />
+
+      {/* Tag Manager Dialog */}
+      <TagManager
+        open={tagManagerOpen}
+        onOpenChange={handleTagManagerClose}
       />
     </div>
   );

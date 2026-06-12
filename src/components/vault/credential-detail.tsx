@@ -22,6 +22,7 @@ import {
 import { Eye, EyeOff, Copy, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCredentialById, deleteCredential } from '@/actions/credentials';
+import { getTags } from '@/actions/tags';
 import { useVaultStore } from '@/store/vault';
 import { useClipboard } from '@/hooks/use-clipboard';
 
@@ -54,6 +55,7 @@ export function CredentialDetail({ credentialId, open, onOpenChange, onEdit }: C
   const [data, setData] = useState<CredentialData | null>(null);
   const [showFields, setShowFields] = useState<Record<string, boolean>>({});
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [tagMap, setTagMap] = useState<Map<string, string>>(new Map());
   const { copy } = useClipboard();
 
   useEffect(() => {
@@ -71,6 +73,12 @@ export function CredentialDetail({ credentialId, open, onOpenChange, onEdit }: C
         .then((result) => { if (result) setData(result as unknown as CredentialData); })
         .catch(() => toast.error('解密失败'))
         .finally(() => setLoading(false));
+      getTags()
+        .then((tags) => {
+          const map = new Map(tags.map((t) => [t.id, t.name]));
+          setTagMap(map);
+        })
+        .catch(() => {});
     }
   }, [open, credentialId]);
 
@@ -115,8 +123,8 @@ export function CredentialDetail({ credentialId, open, onOpenChange, onEdit }: C
           <div className="space-y-4">
             {data.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
-                {data.tags.map((tag) => (
-                  <Badge key={tag} variant="secondary">{tag}</Badge>
+                {data.tags.map((tagId) => (
+                  <Badge key={tagId} variant="secondary">{tagMap.get(tagId) || tagId}</Badge>
                 ))}
               </div>
             )}

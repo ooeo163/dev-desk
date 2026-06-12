@@ -14,10 +14,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Eye, EyeOff, Loader2, X } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createCredential, updateCredential } from '@/actions/credentials';
+import { getTags } from '@/actions/tags';
 import { useVaultStore } from '@/store/vault';
+import { cn } from '@/lib/utils';
+
+interface Tag {
+  id: string;
+  name: string;
+  createdAt: Date;
+}
 
 interface CredentialDialogProps {
   open: boolean;
@@ -32,10 +40,9 @@ interface CredentialDialogProps {
     totpSecret?: string | null;
     notes?: string | null;
   } | null;
-  existingTags?: string[];
 }
 
-export function CredentialDialog({ open, onOpenChange, credential, existingTags }: CredentialDialogProps) {
+export function CredentialDialog({ open, onOpenChange, credential }: CredentialDialogProps) {
   const isEdit = !!credential;
   const getDekBase64 = useVaultStore((s) => s.getDekBase64);
 
@@ -49,19 +56,28 @@ export function CredentialDialog({ open, onOpenChange, credential, existingTags 
   const [apiKey, setApiKey] = useState('');
   const [totpSecret, setTotpSecret] = useState('');
   const [notes, setNotes] = useState('');
-  const [tagInput, setTagInput] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+
+  async function loadTags() {
+    try {
+      const tags = await getTags();
+      setAvailableTags(tags);
+    } catch {
+      toast.error('加载标签失败');
+    }
+  }
 
   useEffect(() => {
     if (open) {
+      loadTags();
       setTitle(credential?.title ?? '');
       setUsername(credential?.username ?? '');
-      setTags(credential?.tags ?? []);
+      setSelectedTagIds(credential?.tags ?? []);
       setPassword(credential?.password ?? '');
       setApiKey(credential?.apiKey ?? '');
       setTotpSecret(credential?.totpSecret ?? '');
       setNotes(credential?.notes ?? '');
-      setTagInput('');
       setShowPassword(false);
       setShowApiKey(false);
       setShowTotpSecret(false);
@@ -69,26 +85,22 @@ export function CredentialDialog({ open, onOpenChange, credential, existingTags 
     }
   }, [open, credential]);
 
-  const matchTags = existingTags
-    ? existingTags.filter(
-        (t) => t.toLowerCase().includes(tagInput.toLowerCase()) && !tags.includes(t)
-      ).slice(0, 5)
-    : [];
-
-  function addTag(tag?: string) {
-    const value = tag ?? tagInput.trim();
-    if (value && !tags.includes(value) && tags.length < 10) {
-      setTags([...tags, value]);
-      setTagInput('');
-    }
-  }
-
-  function removeTag(tag: string) {
-    setTags(tags.filter((t) => t !== tag));
+  function toggleTag(tagId: string) {
+    setSelectedTagIds((prev) =>
+      prev.includes(tagId)
+        ? prev.filter((id) => id !== tagId)
+        : [...prev, tagId]
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (selectedTagIds.length === 0) {
+      toast.error('至少选择一个标签');
+      return;
+    }
+
     setLoading(true);
 
     const dekBase64 = getDekBase64();
@@ -99,8 +111,8 @@ export function CredentialDialog({ open, onOpenChange, credential, existingTags 
     }
 
     const input = isEdit
-      ? { title, username: username || null, password: password || null, apiKey: apiKey || null, totpSecret: totpSecret || null, notes: notes || null, tags: tags.length > 0 ? tags : null }
-      : { title, username: username || undefined, password: password || undefined, apiKey: apiKey || undefined, totpSecret: totpSecret || undefined, notes: notes || undefined, tags: tags.length > 0 ? tags : undefined };
+      ? { title, username: username || null, password: password || null, apiKey: apiKey || null, totpSecret: totpSecret || null, notes: notes || null, tags: selectedTagIds }
+      : { title, username: username || undefined, password: password || undefined, apiKey: apiKey || undefined, totpSecret: totpSecret || undefined, notes: notes || undefined, tags: selectedTagIds };
 
     try {
       let result;
@@ -131,8 +143,7 @@ export function CredentialDialog({ open, onOpenChange, credential, existingTags 
     setApiKey('');
     setTotpSecret('');
     setNotes('');
-    setTags([]);
-    setTagInput('');
+    setSelectedTagIds([]);
     setShowPassword(false);
     setShowApiKey(false);
     setShowTotpSecret(false);
@@ -140,176 +151,148 @@ export function CredentialDialog({ open, onOpenChange, credential, existingTags 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="h-[85vh] flex flex-col sm:max-w-lg">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{isEdit ? '编辑凭证' : '新建凭证'}</DialogTitle>
           <DialogDescription>
-            {isEdit ? '修改凭证信息，留空的敏感字段将不会更新' : '填写凭证信息，敏感字段将自动加密存储'}
+            {isEdit ? '修改凭证信息' : '填写凭证信息，敏感字段将自动加密存储'}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <input type="text" name="username" autoComplete="username" className="hidden" />
           <input type="password" name="password" autoComplete="new-password" className="hidden" />
 
-          <div className="space-y-2">
-            <Label htmlFor="cred-title">标题 *</Label>
-            <Input
-              id="cred-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="例：GitHub 账号"
-              autoComplete="off"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="cred-username">用户名</Label>
-            <Input
-              id="cred-username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="用户名或邮箱"
-              autoComplete="off"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="cred-password">密码</Label>
-            <div className="flex gap-2">
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+            <div className="space-y-2">
+              <Label htmlFor="cred-title">标题 *</Label>
               <Input
-                id="cred-password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="密码"
-                className="flex-1"
-                autoComplete="new-password"
+                id="cred-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="例：GitHub 账号"
+                autoComplete="off"
+                required
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? '隐藏密码' : '显示密码'}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="cred-apikey">API Key</Label>
-            <div className="flex gap-2">
+            <div className="space-y-2">
+              <Label htmlFor="cred-username">用户名</Label>
               <Input
-                id="cred-apikey"
-                type={showApiKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="API 密钥"
-                className="flex-1"
-                autoComplete="new-password"
+                id="cred-username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="用户名或邮箱"
+                autoComplete="off"
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setShowApiKey(!showApiKey)}
-                aria-label={showApiKey ? '隐藏 API Key' : '显示 API Key'}
-              >
-                {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="cred-totp">TOTP Secret</Label>
-            <div className="flex gap-2">
-              <Input
-                id="cred-totp"
-                type={showTotpSecret ? 'text' : 'password'}
-                value={totpSecret}
-                onChange={(e) => setTotpSecret(e.target.value)}
-                placeholder="TOTP 密钥 (Base32)"
-                className="flex-1"
-                autoComplete="new-password"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setShowTotpSecret(!showTotpSecret)}
-                aria-label={showTotpSecret ? '隐藏 TOTP Secret' : '显示 TOTP Secret'}
-              >
-                {showTotpSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="cred-notes">备注</Label>
-            <Textarea
-              id="cred-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="备注内容..."
-              rows={3}
-              autoComplete="off"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>标签</Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
+            <div className="space-y-2">
+              <Label htmlFor="cred-password">密码</Label>
+              <div className="flex gap-2">
                 <Input
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  placeholder="输入标签后按回车"
-                  autoComplete="off"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addTag();
-                    }
-                  }}
-                  className="w-full"
+                  id="cred-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="密码"
+                  className="flex-1"
+                  autoComplete="new-password"
                 />
-                {tagInput && matchTags.length > 0 && (
-                  <div className="absolute left-0 top-full z-50 mt-1 w-full max-h-32 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
-                    {matchTags.map((tag) => (
-                      <button
-                        key={tag}
-                        type="button"
-                        className="flex w-full items-center px-3 py-1.5 text-sm hover:bg-muted"
-                        onClick={() => addTag(tag)}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? '隐藏密码' : '显示密码'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={() => addTag()}>
-                添加
-              </Button>
             </div>
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="gap-1">
-                    {tag}
-                    <button type="button" onClick={() => removeTag(tag)}>
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
+
+            <div className="space-y-2">
+              <Label htmlFor="cred-apikey">API Key</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="cred-apikey"
+                  type={showApiKey ? 'text' : 'password'}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="API 密钥"
+                  className="flex-1"
+                  autoComplete="new-password"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  aria-label={showApiKey ? '隐藏 API Key' : '显示 API Key'}
+                >
+                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
               </div>
-            )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cred-totp">TOTP Secret</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="cred-totp"
+                  type={showTotpSecret ? 'text' : 'password'}
+                  value={totpSecret}
+                  onChange={(e) => setTotpSecret(e.target.value)}
+                  placeholder="TOTP 密钥 (Base32)"
+                  className="flex-1"
+                  autoComplete="new-password"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowTotpSecret(!showTotpSecret)}
+                  aria-label={showTotpSecret ? '隐藏 TOTP Secret' : '显示 TOTP Secret'}
+                >
+                  {showTotpSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cred-notes">备注</Label>
+              <Textarea
+                id="cred-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="备注内容..."
+                rows={3}
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>标签 *</Label>
+              {availableTags.length === 0 ? (
+                <p className="text-sm text-muted-foreground">暂无标签，请先创建标签</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {availableTags.map((tag) => (
+                    <Badge
+                      key={tag.id}
+                      variant={selectedTagIds.includes(tag.id) ? 'default' : 'outline'}
+                      className="cursor-pointer select-none"
+                      onClick={() => toggleTag(tag.id)}
+                    >
+                      {tag.name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0 pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               取消
             </Button>

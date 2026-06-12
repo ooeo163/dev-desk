@@ -18,6 +18,15 @@ export const unlockVaultSchema = z.object({
   masterPassword: masterPasswordSchema,
 });
 
+// ── Tags ─────────────────────────────────────────────
+export const createTagSchema = z.object({
+  name: z.string().min(1, '标签名称不能为空').max(50, '标签名称不能超过50个字符'),
+});
+
+export const updateTagSchema = z.object({
+  name: z.string().min(1, '标签名称不能为空').max(50, '标签名称不能超过50个字符'),
+});
+
 // ── Credentials ───────────────────────────────────────
 export const createCredentialSchema = z.object({
   title: z.string().min(1, '标题不能为空').max(100),
@@ -26,7 +35,7 @@ export const createCredentialSchema = z.object({
   apiKey: z.string().optional().or(z.literal('')),
   totpSecret: z.string().optional().or(z.literal('')),
   notes: z.string().optional().or(z.literal('')),
-  tags: z.array(z.string().max(50)).max(10).optional(),
+  tags: z.array(z.string()).min(1, '至少选择一个标签').max(10),
 });
 
 export const updateCredentialSchema = z.object({
@@ -36,7 +45,7 @@ export const updateCredentialSchema = z.object({
   apiKey: z.string().nullish(),
   totpSecret: z.string().nullish(),
   notes: z.string().nullish(),
-  tags: z.array(z.string().max(50)).max(10).nullish(),
+  tags: z.array(z.string()).min(1, '至少选择一个标签').max(10).nullish(),
 });
 
 // ── Tasks ─────────────────────────────────────────────
@@ -59,6 +68,8 @@ export const updateTaskSchema = z.object({
 });
 
 // ── Type exports ──────────────────────────────────────
+export type CreateTagInput = z.infer<typeof createTagSchema>;
+export type UpdateTagInput = z.infer<typeof updateTagSchema>;
 export type CreateCredentialInput = z.infer<typeof createCredentialSchema>;
 export type UpdateCredentialInput = z.infer<typeof updateCredentialSchema>;
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
