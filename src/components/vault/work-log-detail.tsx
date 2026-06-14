@@ -12,26 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, Pencil, Trash2, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 import { getWorkLogById } from '@/actions/work-logs';
-
-interface WorkLogItemData {
-  id: string;
-  content: string;
-  isCancelled: boolean;
-  sortOrder: number;
-  sourceTaskId: string | null;
-}
-
-interface WorkLogData {
-  id: string;
-  weekStart: Date;
-  weekEnd: Date;
-  projectProgress: string | null;
-  items: WorkLogItemData[];
-  createdAt: Date;
-  updatedAt: Date;
-}
 
 interface WorkLogDetailProps {
   workLogId: string | null;
@@ -52,7 +33,15 @@ function formatDateFull(date: Date): string {
 
 export function WorkLogDetail({ workLogId, open, onOpenChange, onEdit, onDelete }: WorkLogDetailProps) {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<WorkLogData | null>(null);
+  const [data, setData] = useState<{
+    id: string;
+    weekStart: Date;
+    weekEnd: Date;
+    projectProgress: string | null;
+    taskDetails: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  } | null>(null);
 
   useEffect(() => {
     if (open && workLogId) {
@@ -60,15 +49,12 @@ export function WorkLogDetail({ workLogId, open, onOpenChange, onEdit, onDelete 
       setLoading(true);
       getWorkLogById(workLogId)
         .then((result) => {
-          if (result) setData(result as unknown as WorkLogData);
+          if (result) setData(result);
         })
         .catch(() => toast.error('加载失败'))
         .finally(() => setLoading(false));
     }
   }, [open, workLogId]);
-
-  const activeItems = data?.items.filter((item) => !item.isCancelled) ?? [];
-  const cancelledItems = data?.items.filter((item) => item.isCancelled) ?? [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -79,7 +65,7 @@ export function WorkLogDetail({ workLogId, open, onOpenChange, onEdit, onDelete 
             {data ? `${formatDateFull(data.weekStart)} ~ ${formatDateFull(data.weekEnd)}` : '工作记录详情'}
           </DialogTitle>
           <DialogDescription>
-            {data && `共 ${data.items.length} 条工作条目`}
+            工作记录详情
           </DialogDescription>
         </DialogHeader>
 
@@ -92,55 +78,25 @@ export function WorkLogDetail({ workLogId, open, onOpenChange, onEdit, onDelete 
         {data && !loading && (
           <div className="space-y-4">
             {data.projectProgress && (
-              <div className="p-4 rounded-lg bg-muted/40 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">项目进度</p>
-                <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">项目</p>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">
                   {data.projectProgress}
                 </p>
               </div>
             )}
 
-            {activeItems.length > 0 && (
+            {data.taskDetails && (
               <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">工作条目</p>
-                <div>
-                  {activeItems.map((item, idx) => (
-                    <div
-                      key={item.id}
-                      className={cn(
-                        'flex items-start gap-2 py-1.5 px-3 -mx-3 rounded-md',
-                        idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'
-                      )}
-                    >
-                      <span className="text-sm text-muted-foreground w-6 text-right shrink-0">{idx + 1}.</span>
-                      <span className="text-sm whitespace-pre-wrap">{item.content}</span>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-sm font-medium text-muted-foreground">任务详情</p>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                  {data.taskDetails}
+                </p>
               </div>
             )}
 
-            {cancelledItems.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">已取消</p>
-                <div>
-                  {cancelledItems.map((item, idx) => (
-                    <div
-                      key={item.id}
-                      className={cn(
-                        'flex items-start gap-2 py-1.5 px-3 -mx-3 rounded-md',
-                        idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'
-                      )}
-                    >
-                      <span className="text-sm text-muted-foreground line-through whitespace-pre-wrap">{item.content}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {data.items.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">暂无工作条目</p>
+            {!data.projectProgress && !data.taskDetails && (
+              <p className="text-sm text-muted-foreground text-center py-4">暂无内容</p>
             )}
 
             <Separator />

@@ -1,0 +1,1 @@
+ALTER TABLE `work_logs` ADD `task_details` text;

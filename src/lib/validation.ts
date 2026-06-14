@@ -74,26 +74,14 @@ export const createWorkLogSchema = z.object({
   weekStart: z.string().min(1, '请选择周开始日期'),
   weekEnd: z.string().min(1, '请选择周结束日期'),
   projectProgress: z.string().optional().or(z.literal('')),
-  items: z.array(z.object({
-    content: z.string().min(1, '条目内容不能为空'),
-  })).optional(),
+  taskDetails: z.string().optional().or(z.literal('')),
 });
 
 export const updateWorkLogSchema = z.object({
   weekStart: z.string().optional(),
   weekEnd: z.string().optional(),
   projectProgress: z.string().nullish(),
-});
-
-export const createWorkLogItemSchema = z.object({
-  content: z.string().min(1, '条目内容不能为空'),
-  isCancelled: z.boolean().default(false),
-});
-
-export const updateWorkLogItemSchema = z.object({
-  content: z.string().min(1, '条目内容不能为空').optional(),
-  isCancelled: z.boolean().optional(),
-  sortOrder: z.number().int().optional(),
+  taskDetails: z.string().nullish(),
 });
 
 // ── Type exports ──────────────────────────────────────
@@ -106,5 +94,3 @@ export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
 export type CreateWorkLogInput = z.infer<typeof createWorkLogSchema>;
 export type UpdateWorkLogInput = z.infer<typeof updateWorkLogSchema>;
-export type CreateWorkLogItemInput = z.infer<typeof createWorkLogItemSchema>;
-export type UpdateWorkLogItemInput = z.infer<typeof updateWorkLogItemSchema>;

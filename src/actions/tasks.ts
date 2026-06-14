@@ -7,7 +7,6 @@ import { createTaskSchema, updateTaskSchema, taskStatusSchema } from '@/lib/vali
 import { eq, desc, count } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import type { TaskStatus } from '@/lib/validation';
-import { syncTaskToWorkLog } from '@/actions/work-logs';
 
 export async function createTask(
   input: Record<string, unknown>
@@ -96,16 +95,8 @@ export async function updateTaskStatus(
 
   db.update(tasks).set({ status: parsed.data as TaskStatus }).where(eq(tasks.id, id)).execute();
 
-  if (parsed.data === 'done') {
-    const task = db.select({ title: tasks.title }).from(tasks).where(eq(tasks.id, id)).get();
-    if (task) {
-      await syncTaskToWorkLog(task.title, id);
-    }
-  }
-
   revalidatePath('/dashboard/tasks');
   revalidatePath('/dashboard');
-  revalidatePath('/dashboard/work-logs');
   return { success: true };
 }
 

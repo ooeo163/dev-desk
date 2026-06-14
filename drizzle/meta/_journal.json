@@ -29,6 +29,13 @@
       "when": 1781236185244,
       "tag": "0003_aspiring_liz_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1781409057434,
+      "tag": "0004_living_makkari",
+      "breakpoints": true
     }
   ]
 }

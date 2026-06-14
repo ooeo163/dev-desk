@@ -35,7 +35,8 @@ export const workLogs = sqliteTable('work_logs', {
   id: text('id').primaryKey(),
   weekStart: integer('week_start', { mode: 'timestamp' }).notNull(),
   weekEnd: integer('week_end', { mode: 'timestamp' }).notNull(),
-  projectProgress: text('project_progress'), // 项目进度，换行分隔
+  projectProgress: text('project_progress'), // 项目进度
+  taskDetails: text('task_details'), // 任务详情
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });

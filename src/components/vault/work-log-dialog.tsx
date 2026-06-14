@@ -13,17 +13,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Plus, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getWorkLogById, createWorkLog, updateWorkLog, addWorkLogItem, deleteWorkLogItem, updateWorkLogItem } from '@/actions/work-logs';
-
-interface WorkLogItemData {
-  id: string;
-  content: string;
-  isCancelled: boolean;
-  sortOrder: number;
-  sourceTaskId: string | null;
-}
+import { getWorkLogById, createWorkLog, updateWorkLog } from '@/actions/work-logs';
 
 interface WorkLogDialogProps {
   open: boolean;
@@ -66,8 +58,7 @@ export function WorkLogDialog({ open, onOpenChange, workLogId }: WorkLogDialogPr
   const [weekStart, setWeekStart] = useState('');
   const [weekEnd, setWeekEnd] = useState('');
   const [projectProgress, setProjectProgress] = useState('');
-  const [items, setItems] = useState<WorkLogItemData[]>([]);
-  const [newItemContent, setNewItemContent] = useState('');
+  const [taskDetails, setTaskDetails] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -80,7 +71,7 @@ export function WorkLogDialog({ open, onOpenChange, workLogId }: WorkLogDialogPr
               setWeekStart(formatDateInput(new Date(data.weekStart)));
               setWeekEnd(formatDateInput(new Date(data.weekEnd)));
               setProjectProgress(data.projectProgress ?? '');
-              setItems(data.items as WorkLogItemData[]);
+              setTaskDetails(data.taskDetails ?? '');
             }
           })
           .catch(() => toast.error('加载失败'))
@@ -91,56 +82,10 @@ export function WorkLogDialog({ open, onOpenChange, workLogId }: WorkLogDialogPr
         setWeekStart(formatDateInput(monday));
         setWeekEnd(formatDateInput(sunday));
         setProjectProgress('');
-        setItems([]);
+        setTaskDetails('');
       }
-      setNewItemContent('');
     }
   }, [open, workLogId]);
-
-  function handleAddItem() {
-    const content = newItemContent.trim();
-    if (!content) return;
-    setItems((prev) => [
-      ...prev,
-      {
-        id: `temp-${Date.now()}`,
-        content,
-        isCancelled: false,
-        sortOrder: prev.length,
-        sourceTaskId: null,
-      },
-    ]);
-    setNewItemContent('');
-  }
-
-  function handleRemoveItem(id: string) {
-    setItems((prev) => prev.filter((item) => item.id !== id));
-  }
-
-  function handleToggleCancel(id: string) {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, isCancelled: !item.isCancelled } : item
-      )
-    );
-  }
-
-  function handleItemContentChange(id: string, content: string) {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, content } : item
-      )
-    );
-  }
-
-  function handleMoveItem(fromIndex: number, toIndex: number) {
-    setItems((prev) => {
-      const newItems = [...prev];
-      const [moved] = newItems.splice(fromIndex, 1);
-      newItems.splice(toIndex, 0, moved);
-      return newItems.map((item, idx) => ({ ...item, sortOrder: idx }));
-    });
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -157,51 +102,15 @@ export function WorkLogDialog({ open, onOpenChange, workLogId }: WorkLogDialogPr
           weekStart,
           weekEnd,
           projectProgress: projectProgress || null,
+          taskDetails: taskDetails || null,
         });
-
-        const existing = await getWorkLogById(workLogId);
-        const existingMap = new Map(existing?.items.map((i) => [i.id, i]) ?? []);
-        const currentIds = new Set(items.filter((i) => !i.id.startsWith('temp-')).map((i) => i.id));
-
-        // 删除已移除的 items
-        for (const id of existingMap.keys()) {
-          if (!currentIds.has(id)) {
-            await deleteWorkLogItem(id);
-          }
-        }
-
-        // 更新已有 items 的变更（isCancelled、content、sortOrder）
-        for (const item of items) {
-          if (!item.id.startsWith('temp-')) {
-            const original = existingMap.get(item.id);
-            if (original && (
-              original.isCancelled !== item.isCancelled ||
-              original.content !== item.content ||
-              original.sortOrder !== item.sortOrder
-            )) {
-              await updateWorkLogItem(item.id, {
-                isCancelled: item.isCancelled,
-                content: item.content,
-                sortOrder: item.sortOrder,
-              });
-            }
-          }
-        }
-
-        // 添加新 items
-        for (const item of items) {
-          if (item.id.startsWith('temp-')) {
-            await addWorkLogItem(workLogId, { content: item.content, isCancelled: item.isCancelled });
-          }
-        }
-
         toast.success('工作记录已更新');
       } else {
         const result = await createWorkLog({
           weekStart,
           weekEnd,
           projectProgress: projectProgress || undefined,
-          items: items.map((item) => ({ content: item.content })),
+          taskDetails: taskDetails || undefined,
         });
 
         if (result.success) {
@@ -265,92 +174,25 @@ export function WorkLogDialog({ open, onOpenChange, workLogId }: WorkLogDialogPr
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="project-progress">项目进度</Label>
+                <Label htmlFor="project-progress">项目</Label>
                 <Textarea
                   id="project-progress"
                   value={projectProgress}
                   onChange={(e) => setProjectProgress(e.target.value)}
-                  placeholder="当前进行中的项目或模块状态..."
+                  placeholder="当前进行中的项目或模块..."
                   rows={3}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>工作条目</Label>
-                <div className="space-y-2">
-                  {items.map((item, idx) => (
-                    <div
-                      key={item.id}
-                      className={`flex items-start gap-2 group ${item.isCancelled ? 'opacity-50' : ''}`}
-                    >
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          className="h-6 w-6 flex items-center justify-center text-muted-foreground/40 hover:text-foreground transition-colors disabled:opacity-30"
-                          disabled={idx === 0}
-                          onClick={() => handleMoveItem(idx, idx - 1)}
-                        >
-                          <ChevronUp className="h-3 w-3" />
-                        </button>
-                        <button
-                          type="button"
-                          className="h-6 w-6 flex items-center justify-center text-muted-foreground/40 hover:text-foreground transition-colors disabled:opacity-30"
-                          disabled={idx === items.length - 1}
-                          onClick={() => handleMoveItem(idx, idx + 1)}
-                        >
-                          <ChevronDown className="h-3 w-3" />
-                        </button>
-                        <span className="text-xs text-muted-foreground w-5 text-right">{idx + 1}</span>
-                      </div>
-                      <Textarea
-                        value={item.content}
-                        onChange={(e) => handleItemContentChange(item.id, e.target.value)}
-                        className={`flex-1 resize-none min-h-[2.25rem] ${item.isCancelled ? 'line-through' : ''}`}
-                        rows={1}
-                      />
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleCancel(item.id)}
-                          className={`h-6 px-1.5 flex items-center justify-center rounded-md text-xs transition-colors duration-200 ${
-                            item.isCancelled
-                              ? 'text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30'
-                              : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted'
-                          }`}
-                          title={item.isCancelled ? '恢复' : '标记取消'}
-                        >
-                          {item.isCancelled ? '恢复' : '取消'}
-                        </button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => handleRemoveItem(item.id)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex gap-2">
-                  <Input
-                    value={newItemContent}
-                    onChange={(e) => setNewItemContent(e.target.value)}
-                    placeholder="输入新的工作条目..."
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddItem();
-                      }
-                    }}
-                  />
-                  <Button type="button" variant="outline" onClick={handleAddItem} disabled={!newItemContent.trim()}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Label htmlFor="task-details">任务详情</Label>
+                <Textarea
+                  id="task-details"
+                  value={taskDetails}
+                  onChange={(e) => setTaskDetails(e.target.value)}
+                  placeholder="本周完成的任务和工作内容..."
+                  rows={6}
+                />
               </div>
             </div>
 
