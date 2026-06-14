@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,11 +24,14 @@ import {
   User,
   MoreHorizontal,
   ArrowRight,
+  NotebookPen,
+  Calendar,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getDashboardStats } from '@/actions/dashboard';
 import { getCredentialById } from '@/actions/credentials';
 import { updateTaskStatus } from '@/actions/tasks';
+import { getWorkLogs, getOrCreateCurrentWeekWorkLog, updateWorkLog } from '@/actions/work-logs';
 import { useVaultStore } from '@/store/vault';
 import { useClipboard } from '@/hooks/use-clipboard';
 import { cn } from '@/lib/utils';
@@ -85,6 +89,57 @@ export default function DashboardPage() {
     queryKey: ['dashboard-stats'],
     queryFn: getDashboardStats,
   });
+
+  // ── Work log (current week) ──────────────────────
+  const [wlProject, setWlProject] = useState('');
+  const [wlTask, setWlTask] = useState('');
+  const [wlSaving, setWlSaving] = useState(false);
+
+  const { data: workLogs = [] } = useQuery({
+    queryKey: ['work-logs'],
+    queryFn: getWorkLogs,
+  });
+
+  const currentWeekLog = workLogs.find((log) => {
+    const now = new Date();
+    const s = new Date(log.weekStart); const e = new Date(log.weekEnd);
+    s.setHours(0, 0, 0, 0); e.setHours(23, 59, 59, 999);
+    return now >= s && now <= e;
+  });
+
+  useEffect(() => {
+    if (currentWeekLog) {
+      setWlProject(currentWeekLog.projectProgress ?? '');
+      setWlTask(currentWeekLog.taskDetails ?? '');
+    }
+  }, [currentWeekLog]);
+
+  async function ensureCurrentWeekLog() {
+    if (!currentWeekLog) {
+      await getOrCreateCurrentWeekWorkLog();
+      queryClient.invalidateQueries({ queryKey: ['work-logs'] });
+    }
+  }
+
+  const saveWlProject = useCallback(async () => {
+    if (!currentWeekLog) return;
+    setWlSaving(true);
+    try {
+      await updateWorkLog(currentWeekLog.id, { projectProgress: wlProject });
+      queryClient.invalidateQueries({ queryKey: ['work-logs'] });
+    } catch { toast.error('保存失败'); }
+    finally { setWlSaving(false); }
+  }, [currentWeekLog, wlProject, queryClient]);
+
+  const saveWlTask = useCallback(async () => {
+    if (!currentWeekLog) return;
+    setWlSaving(true);
+    try {
+      await updateWorkLog(currentWeekLog.id, { taskDetails: wlTask });
+      queryClient.invalidateQueries({ queryKey: ['work-logs'] });
+    } catch { toast.error('保存失败'); }
+    finally { setWlSaving(false); }
+  }, [currentWeekLog, wlTask, queryClient]);
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
@@ -270,10 +325,84 @@ export default function DashboardPage() {
             ))}
       </div>
 
-      {/* Quick Access Sections */}
+      {/* Main content grid: 工作记录 (left) + 凭证/任务 (right) */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent Credentials */}
+        {/* Left: This Week's Work Log */}
         <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <div className="flex items-center gap-2">
+              <NotebookPen className="h-4 w-4 text-orange-500" />
+              <CardTitle className="text-base">本周工作记录</CardTitle>
+              {currentWeekLog && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {new Date(currentWeekLog.weekStart).getMonth() + 1}/{new Date(currentWeekLog.weekStart).getDate()} ~ {new Date(currentWeekLog.weekEnd).getMonth() + 1}/{new Date(currentWeekLog.weekEnd).getDate()}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {wlSaving && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-primary/40 animate-pulse" />
+                  保存中
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground gap-1"
+                onClick={() => router.push('/dashboard/work-logs')}
+              >
+                全部 <ArrowRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {currentWeekLog ? (
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">项目</label>
+                  <Textarea
+                    value={wlProject}
+                    onChange={(e) => setWlProject(e.target.value)}
+                    onBlur={saveWlProject}
+                    placeholder="当前进行中的项目..."
+                    rows={4}
+                    className="resize-none text-sm leading-relaxed border-border bg-background"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveWlProject();
+                    }}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">任务详情</label>
+                  <Textarea
+                    value={wlTask}
+                    onChange={(e) => setWlTask(e.target.value)}
+                    onBlur={saveWlTask}
+                    placeholder="本周完成的任务..."
+                    rows={5}
+                    className="resize-none text-sm leading-relaxed border-border bg-background"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveWlTask();
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-8">
+                <Button size="sm" onClick={ensureCurrentWeekLog}>
+                  <NotebookPen className="mr-1.5 h-3.5 w-3.5" /> 创建本周记录
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Right: Credentials + Tasks stacked */}
+        <div className="space-y-6">
+          {/* Recent Credentials */}
+          <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <div className="flex items-center gap-2">
               <KeyRound className="h-4 w-4 text-blue-500" />
@@ -463,6 +592,7 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+        </div>
       </div>
 
       {/* Credential Detail Dialog */}
