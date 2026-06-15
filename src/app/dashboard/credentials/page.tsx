@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,14 @@ import { CredentialDetail } from '@/components/vault/credential-detail';
 import { TagManager } from '@/components/vault/tag-manager';
 import { useClipboard } from '@/hooks/use-clipboard';
 import { useVaultStore } from '@/store/vault';
+import {
+  resolveCredentialType,
+  resolveTagType,
+  getAllTypeConfigs,
+  DEFAULT_TYPE,
+  type CredentialTypeConfig,
+} from '@/lib/credential-types';
+import { cn } from '@/lib/utils';
 
 interface Tag {
   id: string;
@@ -24,8 +32,15 @@ interface Tag {
   createdAt: Date;
 }
 
+interface TypeStat {
+  config: CredentialTypeConfig;
+  count: number;
+  tagIds: string[];
+}
+
 export default function CredentialsPage() {
   const [search, setSearch] = useState('');
+  const [selectedTypeKey, setSelectedTypeKey] = useState<string | null>(null);
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -102,31 +117,76 @@ export default function CredentialsPage() {
     }
   }
 
-  // Create tag id to name mapping
+  // Tag id → name mapping
   const tagMap = new Map(tags.map((t) => [t.id, t.name]));
-
-  // Get tag name by id
   function getTagName(id: string): string {
     return tagMap.get(id) || id;
   }
 
-  // Filter credentials
-  const filtered = credentials.filter((cred) => {
-    const matchSearch =
-      !search ||
-      cred.title.toLowerCase().includes(search.toLowerCase()) ||
-      (cred.username ?? '').toLowerCase().includes(search.toLowerCase());
-    const matchTag = !selectedTagId || cred.tags.includes(selectedTagId);
-    return matchSearch && matchTag;
-  });
+  // ── Statistics computation ──────────────────────────────────────────
+  const { typeStats, otherCount } = useMemo(() => {
+    const allTypeConfigs = getAllTypeConfigs();
+    const usedTagIds = new Set(credentials.flatMap((c) => c.tags));
+    const usedTagsList = tags.filter((t) => usedTagIds.has(t.id));
 
-  // Collect all unique tag ids from credentials
-  const allTagIds = Array.from(new Set(credentials.flatMap((c) => c.tags)));
+    const matchedCredIds = new Set<string>();
+    const stats: TypeStat[] = allTypeConfigs.map((config) => {
+      const matchingTagIds = usedTagsList
+        .filter((t) => resolveTagType(t.name)?.key === config.key)
+        .map((t) => t.id);
+      const matchingCredIds = new Set(
+        credentials
+          .filter((c) => c.tags.some((tid) => matchingTagIds.includes(tid)))
+          .map((c) => c.id)
+      );
+      matchingCredIds.forEach((id) => matchedCredIds.add(id));
+      return { config, count: matchingCredIds.size, tagIds: matchingTagIds };
+    });
 
-  // Get tags that are actually used by credentials
-  const usedTags = allTagIds
-    .map((id) => tags.find((t) => t.id === id))
-    .filter(Boolean) as Tag[];
+    const other = credentials.filter((c) => !matchedCredIds.has(c.id)).length;
+    return { typeStats: stats.filter((s) => s.count > 0), otherCount: other };
+  }, [credentials, tags]);
+
+  // ── Secondary tag filter (tags within selected type) ────────────────
+  const typeSubTags = useMemo(() => {
+    if (!selectedTypeKey || selectedTypeKey === 'all') return [];
+    const stat = typeStats.find((s) => s.config.key === selectedTypeKey);
+    if (!stat) return [];
+    return stat.tagIds
+      .map((id) => tags.find((t) => t.id === id))
+      .filter(Boolean) as Tag[];
+  }, [selectedTypeKey, typeStats, tags]);
+
+  // ── Filter credentials ─────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    return credentials.filter((cred) => {
+      const matchSearch =
+        !search ||
+        cred.title.toLowerCase().includes(search.toLowerCase()) ||
+        (cred.username ?? '').toLowerCase().includes(search.toLowerCase());
+
+      let matchType = true;
+      if (selectedTypeKey && selectedTypeKey !== 'all') {
+        if (selectedTypeKey === 'other') {
+          const tagNames = cred.tags.map((id) => tagMap.get(id) ?? '');
+          matchType = !tagNames.some((name) => resolveTagType(name) !== null);
+        } else {
+          const stat = typeStats.find((s) => s.config.key === selectedTypeKey);
+          matchType = stat ? cred.tags.some((tid) => stat.tagIds.includes(tid)) : false;
+        }
+      }
+
+      const matchTag = !selectedTagId || cred.tags.includes(selectedTagId);
+
+      return matchSearch && matchType && matchTag;
+    });
+  }, [credentials, search, selectedTypeKey, selectedTagId, typeStats, tagMap]);
+
+  // ── Handlers ───────────────────────────────────────────────────────
+  function handleTypeClick(typeKey: string | null) {
+    setSelectedTypeKey(typeKey);
+    setSelectedTagId(null); // reset sub-filter when switching type
+  }
 
   function handleCreate() {
     setEditCred(null);
@@ -168,6 +228,7 @@ export default function CredentialsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">凭证管理</h1>
@@ -183,8 +244,8 @@ export default function CredentialsPage() {
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <div className="space-y-4">
+      {/* Search */}
+      <div className="space-y-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -194,7 +255,64 @@ export default function CredentialsPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        {usedTags.length > 0 && (
+
+        {/* Type Filter Tabs */}
+        {typeStats.length > 0 && (
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+            {/* All tab */}
+            <button
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors shrink-0',
+                (!selectedTypeKey || selectedTypeKey === 'all')
+                  ? 'bg-background shadow-sm text-foreground font-medium'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              )}
+              onClick={() => handleTypeClick(null)}
+            >
+              <KeyRound className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">全部</span>
+              <span className="text-xs bg-muted rounded-full px-1.5 py-0.5">{credentials.length}</span>
+            </button>
+
+            {/* Type tabs */}
+            {typeStats.map((stat) => (
+              <button
+                key={stat.config.key}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors shrink-0',
+                  selectedTypeKey === stat.config.key
+                    ? 'bg-background shadow-sm text-foreground font-medium'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                )}
+                onClick={() => handleTypeClick(stat.config.key)}
+              >
+                <stat.config.icon className={cn('h-3.5 w-3.5', stat.config.color)} />
+                <span className="hidden sm:inline">{stat.config.label}</span>
+                <span className="text-xs bg-muted rounded-full px-1.5 py-0.5">{stat.count}</span>
+              </button>
+            ))}
+
+            {/* Other tab */}
+            {otherCount > 0 && (
+              <button
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors shrink-0',
+                  selectedTypeKey === 'other'
+                    ? 'bg-background shadow-sm text-foreground font-medium'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                )}
+                onClick={() => handleTypeClick('other')}
+              >
+                <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="hidden sm:inline">其他</span>
+                <span className="text-xs bg-muted rounded-full px-1.5 py-0.5">{otherCount}</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Secondary tag filter (within selected type) */}
+        {typeSubTags.length > 1 && (
           <div className="flex flex-wrap gap-1">
             <Badge
               variant={selectedTagId === null ? 'default' : 'outline'}
@@ -203,7 +321,7 @@ export default function CredentialsPage() {
             >
               全部
             </Badge>
-            {usedTags.map((tag) => (
+            {typeSubTags.map((tag) => (
               <Badge
                 key={tag.id}
                 variant={selectedTagId === tag.id ? 'default' : 'outline'}
@@ -220,7 +338,7 @@ export default function CredentialsPage() {
       {/* Credentials List */}
       {filtered.length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-16">
-          {search || selectedTagId ? (
+          {search || selectedTypeKey || selectedTagId ? (
             <>
               <EmptySearch className="mb-4 h-20 w-20 text-muted-foreground/40" />
               <p className="text-muted-foreground">没有找到匹配的凭证</p>
@@ -238,93 +356,121 @@ export default function CredentialsPage() {
         </Card>
       ) : (
         <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(320px,1fr))]">
-          {filtered.map((cred) => (
-            <Card
-              key={cred.id}
-              className="cursor-pointer p-4 transition-all hover:bg-muted/50 hover:shadow-sm hover:scale-[1.005]"
-              onClick={() => {
-                setSelectedId(cred.id);
-                setDetailOpen(true);
-              }}
-            >
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-1 min-h-[22px]">
-                  {cred.tags.map((tagId) => (
-                    <Badge key={tagId} variant="secondary" className="text-xs">
-                      {getTagName(tagId)}
-                    </Badge>
-                  ))}
+          {filtered.map((cred) => {
+            const tagNames = cred.tags.map((id) => tagMap.get(id) ?? '');
+            const typeConfig = resolveCredentialType(tagNames);
+
+            return (
+              <Card
+                key={cred.id}
+                className="cursor-pointer px-3 py-2.5 transition-all hover:bg-muted/50 hover:shadow-sm"
+                onClick={() => {
+                  setSelectedId(cred.id);
+                  setDetailOpen(true);
+                }}
+              >
+                <div className="flex items-center gap-1 mb-1.5">
+                  {cred.tags.map((tagId) => {
+                    const tagName = getTagName(tagId);
+                    const tagType = resolveTagType(tagName);
+                    const isTypeTag = tagType && tagType.key === typeConfig.key;
+
+                    return isTypeTag ? (
+                      <Badge
+                        key={tagId}
+                        variant="secondary"
+                        className={cn('text-xs', typeConfig.bg, typeConfig.color, 'border-0')}
+                      >
+                        <tagType.icon className="h-3 w-3 mr-0.5" />
+                        {tagName}
+                      </Badge>
+                    ) : (
+                      <Badge key={tagId} variant="secondary" className="text-xs">
+                        {tagName}
+                      </Badge>
+                    );
+                  })}
                 </div>
-                <div className="border-b border-border/50" />
-                <div className="flex items-start gap-2">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                      <KeyRound className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{cred.title}</p>
-                      {cred.username && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                          <User className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{cred.username}</span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5 ml-0.5"
-                            title="复制用户名"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              copy(cred.username!);
-                              triggerCopyFeedback(`copy-username-${cred.id}`);
-                              toast.success('用户名已复制');
-                            }}
-                          >
-                            {copyFeedback[`copy-username-${cred.id}`] ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                          </Button>
+
+                <div className="flex items-start gap-2.5">
+                  <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full', typeConfig.bg)}>
+                    <typeConfig.icon className={cn('h-4 w-4', typeConfig.color)} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{cred.title}</p>
+                    {cred.username && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                        <User className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{cred.username}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 ml-0.5"
+                          title="复制用户名"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copy(cred.username!);
+                            triggerCopyFeedback(`copy-username-${cred.id}`);
+                            toast.success('用户名已复制');
+                          }}
+                        >
+                          {copyFeedback[`copy-username-${cred.id}`] ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        </Button>
+                      </div>
+                    )}
+                    {cred.address && (
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">{cred.address}</p>
+                    )}
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(cred.updatedAt).toLocaleDateString('zh-CN')}
+                      </span>
+                      {(cred.hasPassword || cred.hasApiKey) && (
+                        <div className="flex items-center gap-0.5">
+                          {cred.hasPassword && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              title="复制密码"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyField(cred.id, `copy-password-${cred.id}`, 'password', '密码');
+                              }}
+                            >
+                              {copyFeedback[`copy-password-${cred.id}`] ? (
+                                <Check className="h-3.5 w-3.5" />
+                              ) : (
+                                <KeyRound className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                          )}
+                          {cred.hasApiKey && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              title="复制 API Key"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyField(cred.id, `copy-apikey-${cred.id}`, 'apiKey', 'API Key');
+                              }}
+                            >
+                              {copyFeedback[`copy-apikey-${cred.id}`] ? (
+                                <Check className="h-3.5 w-3.5" />
+                              ) : (
+                                <Key className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                          )}
                         </div>
                       )}
-                      {cred.address && (
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">{cred.address}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {new Date(cred.updatedAt).toLocaleDateString('zh-CN')}
-                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {cred.hasPassword && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9"
-                        title="复制密码"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCopyField(cred.id, `copy-password-${cred.id}`, 'password', '密码');
-                        }}
-                      >
-                        {copyFeedback[`copy-password-${cred.id}`] ? <Check className="h-4 w-4" /> : <KeyRound className="h-4 w-4" />}
-                      </Button>
-                    )}
-                    {cred.hasApiKey && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9"
-                        title="复制 API Key"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCopyField(cred.id, `copy-apikey-${cred.id}`, 'apiKey', 'API Key');
-                        }}
-                      >
-                        {copyFeedback[`copy-apikey-${cred.id}`] ? <Check className="h-4 w-4" /> : <Key className="h-4 w-4" />}
-                      </Button>
-                    )}
-                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
 
