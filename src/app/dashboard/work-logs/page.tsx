@@ -139,7 +139,7 @@ export default function WorkLogsPage() {
         toast.error('创建本周记录失败');
       }
     } else {
-      toast.info('本周已有工作记录，可直接在左侧编辑');
+      toast.info('本周已有工作记录，可直接在上方编辑');
       document.querySelector('[data-current-week]')?.scrollIntoView({ behavior: 'smooth' });
     }
   }
@@ -244,17 +244,18 @@ export default function WorkLogsPage() {
   };
 
   return (
-    <div className="flex flex-col h-full -m-4 sm:-m-6">
-      {/* Header — compact single row */}
-      <div className="shrink-0 flex items-center justify-between px-4 sm:px-6 pt-3 sm:pt-4 pb-2">
+    <div className="flex flex-col lg:h-full -m-4 sm:-m-6">
+      {/* Desktop Header */}
+      <div className="hidden lg:flex shrink-0 items-center justify-between px-6 pt-4 pb-2">
         <h1 className="text-lg font-bold tracking-tight">工作记录</h1>
         <Button size="sm" onClick={handleCreate}>
           <NotebookPen className="mr-1.5 h-3.5 w-3.5" /> 新建记录
         </Button>
       </div>
 
-      {/* Main body — left-right split on desktop */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4 px-4 sm:px-6 pb-3 sm:pb-4">
+      {/* Desktop: left-right split */}
+      <div className="hidden lg:flex flex-1 min-h-0 flex-col">
+      <div className="flex-1 min-h-0 grid grid-cols-[1fr_380px] gap-4 px-6 pb-4">
         {/* Left column: Editing panel */}
         <div className="overflow-y-auto lg:pr-2">
           {editingLog ? (
@@ -367,10 +368,87 @@ export default function WorkLogsPage() {
         </div>
       </div>
 
-      {/* Mobile: All records below */}
-      <div className="lg:hidden px-4 sm:px-6 pb-4 sm:pb-6">
+      </div>
+
+      {/* Mobile: natural flow layout */}
+      <div className="flex flex-col lg:hidden">
+        {/* Mobile Header */}
+        <div className="flex items-center justify-between px-4 pt-3 pb-2">
+          <h1 className="text-lg font-bold tracking-tight">工作记录</h1>
+          <Button size="sm" onClick={handleCreate}>
+            <NotebookPen className="mr-1.5 h-3.5 w-3.5" /> 新建记录
+          </Button>
+        </div>
+
+        {/* Mobile Editor */}
+        <div className="px-4 pb-3">
+          {editingLog ? (
+            <Card className="border border-border/60 shadow-sm bg-card overflow-hidden" data-current-week>
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40">
+                <div className="flex items-center gap-2 text-xs">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span
+                    className="font-medium cursor-pointer hover:underline decoration-dotted underline-offset-4"
+                    onClick={() => handleViewDetail(editingLog!.id)}
+                  >
+                    {formatDateRange(editingLog!.weekStart, editingLog!.weekEnd)}
+                  </span>
+                </div>
+                <div
+                  className={cn(
+                    'text-xs text-muted-foreground flex items-center gap-1 transition-all duration-300',
+                    saving ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                  )}
+                >
+                  <div className="h-2.5 w-2.5 rounded-full bg-primary/40 animate-pulse" />
+                  已保存
+                </div>
+              </div>
+              <div className="px-4 py-3 space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">项目</label>
+                  <Textarea
+                    value={projectValue}
+                    onChange={(e) => setProjectValue(e.target.value)}
+                    onBlur={handleProjectSave}
+                    placeholder="当前进行中的项目或模块..."
+                    rows={4}
+                    className="resize-none text-sm leading-relaxed border-border bg-background"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleProjectSave();
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">任务详情</label>
+                  <Textarea
+                    value={taskValue}
+                    onChange={(e) => setTaskValue(e.target.value)}
+                    onBlur={handleTaskSave}
+                    placeholder="本周完成的任务和工作内容..."
+                    rows={6}
+                    className="resize-none text-sm leading-relaxed border-border bg-background"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleTaskSave();
+                    }}
+                  />
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card className="p-8 flex flex-col items-center justify-center min-h-[200px]">
+              <NotebookPen className="h-12 w-12 text-muted-foreground/30 mb-3" />
+              <p className="text-muted-foreground mb-4">本周还没有工作记录</p>
+              <Button onClick={handleCreate}>
+                <NotebookPen className="mr-2 h-4 w-4" /> 开始记录本周工作
+              </Button>
+            </Card>
+          )}
+        </div>
+
+        {/* Mobile Records List */}
         {workLogs.length > 0 && (
-          <>
+          <div className="px-4 pb-4">
             <div className="flex items-center gap-2 mb-2">
               <h2 className="text-sm font-semibold">全部记录</h2>
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{workLogs.length}</Badge>
@@ -379,7 +457,7 @@ export default function WorkLogsPage() {
               {currentWeek && recordRow(currentWeek, true)}
               {historyLogs.map((log) => recordRow(log, false))}
             </div>
-          </>
+          </div>
         )}
       </div>
 

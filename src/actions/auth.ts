@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import { vaultMeta } from '@/lib/db/schema';
 import { verifyPassword, generateSalt, deriveKey } from '@/lib/crypto';
-import { masterPasswordSchema } from '@/lib/validation';
+import { masterPasswordSchema, unlockVaultSchema } from '@/lib/validation';
 import { eq } from 'drizzle-orm';
 import { createHmac } from 'crypto';
 
@@ -90,7 +90,7 @@ export async function unlockVault(
   try {
     const password = formData.get('masterPassword') as string;
 
-    const parsed = masterPasswordSchema.safeParse(password);
+    const parsed = unlockVaultSchema.safeParse({ masterPassword: password });
     if (!parsed.success) {
       return { error: parsed.error.issues[0]?.message || '密码格式不正确' };
     }

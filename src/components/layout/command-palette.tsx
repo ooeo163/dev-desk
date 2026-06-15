@@ -63,7 +63,7 @@ export function CommandPalette({
 
   const { data: tasksData } = useQuery({
     queryKey: ['tasks'],
-    queryFn: () => getTasks(),
+    queryFn: () => getTasks({ pageSize: 200 }),
     staleTime: 30000,
   });
 
@@ -153,7 +153,7 @@ export function CommandPalette({
   return (
     <>
       <CommandDialog open={isOpen} onOpenChange={setIsOpen} className="sm:max-w-3xl">
-        <CommandInput placeholder="搜索凭证、任务、工作记录或操作..." />
+        <CommandInput placeholder="搜索凭证、任务或操作..." />
         <CommandList className="max-h-[32rem]">
           <CommandEmpty>
             <EmptySearch className="mx-auto h-12 w-12 text-muted-foreground/30 mb-2" />
@@ -185,10 +185,10 @@ export function CommandPalette({
 
           {credentials.length > 0 && (
             <CommandGroup heading="凭证">
-              {credentials.slice(0, 5).map((cred) => (
+              {credentials.map((cred) => (
                 <CommandItem
                   key={cred.id}
-                  value={`cred:${cred.title} ${cred.username ?? ''}`}
+                  value={`cred:${cred.id}:${cred.title} ${cred.username ?? ''}`}
                   onSelect={() => handleSelect(`cred:${cred.id}`)}
                 >
                   <KeyRound className="mr-2 h-4 w-4" />
@@ -203,10 +203,10 @@ export function CommandPalette({
 
           {tasks.length > 0 && (
             <CommandGroup heading="任务">
-              {tasks.slice(0, 5).map((task) => (
+              {tasks.map((task) => (
                 <CommandItem
                   key={task.id}
-                  value={`task:${task.title}`}
+                  value={`task:${task.id}:${task.title}`}
                   onSelect={() => handleSelect(`task:${task.id}`)}
                 >
                   <CheckSquare className="mr-2 h-4 w-4" />

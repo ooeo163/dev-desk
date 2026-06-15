@@ -15,7 +15,7 @@ export const initVaultSchema = z.object({
 });
 
 export const unlockVaultSchema = z.object({
-  masterPassword: masterPasswordSchema,
+  masterPassword: z.string().min(1, '请输入主密码'),
 });
 
 // ── Tags ─────────────────────────────────────────────

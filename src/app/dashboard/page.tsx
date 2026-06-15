@@ -18,6 +18,7 @@ import {
   CheckSquare,
   Clock,
   Shield,
+  ChevronLeft,
   ChevronRight,
   Copy,
   Check,
@@ -94,13 +95,33 @@ export default function DashboardPage() {
   const [wlProject, setWlProject] = useState('');
   const [wlTask, setWlTask] = useState('');
   const [wlSaving, setWlSaving] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  // Compute target week boundaries based on weekOffset
+  const today = new Date();
+  const todayDay = today.getDay();
+  const mondayOffset = todayDay === 0 ? -6 : 1 - todayDay;
+  const targetMonday = new Date(today);
+  targetMonday.setDate(today.getDate() + mondayOffset + weekOffset * 7);
+  targetMonday.setHours(0, 0, 0, 0);
+  const targetSunday = new Date(targetMonday);
+  targetSunday.setDate(targetMonday.getDate() + 6);
+  targetSunday.setHours(23, 59, 59, 999);
+  const isCurrentWeek = weekOffset === 0;
 
   const { data: workLogs = [] } = useQuery({
     queryKey: ['work-logs'],
     queryFn: getWorkLogs,
   });
 
-  const currentWeekLog = workLogs.find((log) => {
+  // Find work log for the currently viewed week
+  const targetWeekLog = workLogs.find((log) => {
+    const s = new Date(log.weekStart); const e = new Date(log.weekEnd);
+    s.setHours(0, 0, 0, 0); e.setHours(23, 59, 59, 999);
+    return targetMonday.getTime() === s.getTime() && targetSunday.getTime() === e.getTime();
+  });
+  // Keep currentWeekLog for backward compatibility in save handlers
+  const currentWeekLog = isCurrentWeek ? targetWeekLog : workLogs.find((log) => {
     const now = new Date();
     const s = new Date(log.weekStart); const e = new Date(log.weekEnd);
     s.setHours(0, 0, 0, 0); e.setHours(23, 59, 59, 999);
@@ -108,14 +129,18 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    if (currentWeekLog) {
-      setWlProject(currentWeekLog.projectProgress ?? '');
-      setWlTask(currentWeekLog.taskDetails ?? '');
+    if (targetWeekLog) {
+      setWlProject(targetWeekLog.projectProgress ?? '');
+      setWlTask(targetWeekLog.taskDetails ?? '');
+    } else {
+      setWlProject('');
+      setWlTask('');
     }
-  }, [currentWeekLog]);
+  }, [targetWeekLog]);
 
-  async function ensureCurrentWeekLog() {
-    if (!currentWeekLog) {
+  async function ensureTargetWeekLog() {
+    if (!isCurrentWeek) return;
+    if (!targetWeekLog) {
       await getOrCreateCurrentWeekWorkLog();
       queryClient.invalidateQueries({ queryKey: ['work-logs'] });
     }
@@ -282,7 +307,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">仪表板</h1>
@@ -327,40 +352,67 @@ export default function DashboardPage() {
 
       {/* Main content grid: 工作记录 (left) + 凭证/任务 (right) */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Left: This Week's Work Log */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <div className="flex items-center gap-2">
+        {/* Left: Work Log with week navigation */}
+        <Card className="lg:flex lg:flex-col">
+          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-3 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               <NotebookPen className="h-4 w-4 text-orange-500" />
-              <CardTitle className="text-base">本周工作记录</CardTitle>
-              {currentWeekLog && (
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  {new Date(currentWeekLog.weekStart).getMonth() + 1}/{new Date(currentWeekLog.weekStart).getDate()} ~ {new Date(currentWeekLog.weekEnd).getMonth() + 1}/{new Date(currentWeekLog.weekEnd).getDate()}
-                </span>
-              )}
+              <CardTitle className="text-base">工作记录</CardTitle>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 flex-wrap">
               {wlSaving && (
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <span className="text-xs text-muted-foreground flex items-center gap-1 mr-2">
                   <div className="h-2 w-2 rounded-full bg-primary/40 animate-pulse" />
                   保存中
                 </span>
               )}
               <Button
                 variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setWeekOffset((o) => o - 1)}
+                title="上一周"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-xs text-muted-foreground flex items-center gap-1 px-1.5 min-w-[120px] justify-center tabular-nums">
+                <Calendar className="h-3 w-3 shrink-0" />
+                {targetMonday.getMonth() + 1}/{targetMonday.getDate()} ~ {targetSunday.getMonth() + 1}/{targetSunday.getDate()}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setWeekOffset((o) => Math.min(o + 1, 0))}
+                disabled={weekOffset >= 0}
+                title="下一周"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              {!isCurrentWeek && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground h-7 px-2 ml-1"
+                  onClick={() => setWeekOffset(0)}
+                >
+                  本周
+                </Button>
+              )}
+              <Button
+                variant="ghost"
                 size="sm"
-                className="text-xs text-muted-foreground gap-1"
+                className="text-xs text-muted-foreground gap-1 ml-1"
                 onClick={() => router.push('/dashboard/work-logs')}
               >
                 全部 <ArrowRight className="h-3 w-3" />
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            {currentWeekLog ? (
-              <div className="space-y-4">
-                <div className="space-y-1.5">
+          <CardContent className="lg:flex-1 lg:flex lg:flex-col">
+            {targetWeekLog ? (
+              <div className="space-y-2 lg:flex-1 lg:flex lg:flex-col lg:gap-2">
+                <div className="space-y-1 shrink-0">
                   <label className="text-xs font-medium text-muted-foreground">项目</label>
                   <Textarea
                     value={wlProject}
@@ -374,7 +426,7 @@ export default function DashboardPage() {
                     }}
                   />
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1 lg:flex-1 lg:flex lg:flex-col">
                   <label className="text-xs font-medium text-muted-foreground">任务详情</label>
                   <Textarea
                     value={wlTask}
@@ -382,7 +434,7 @@ export default function DashboardPage() {
                     onBlur={saveWlTask}
                     placeholder="本周完成的任务..."
                     rows={5}
-                    className="resize-none text-sm leading-relaxed border-border bg-background"
+                    className="resize-none text-sm leading-relaxed border-border bg-background lg:flex-1 lg:min-h-[180px]"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveWlTask();
                     }}
@@ -390,10 +442,16 @@ export default function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center py-8">
-                <Button size="sm" onClick={ensureCurrentWeekLog}>
-                  <NotebookPen className="mr-1.5 h-3.5 w-3.5" /> 创建本周记录
-                </Button>
+              <div className="flex flex-col items-center justify-center py-8 gap-2">
+                <NotebookPen className="h-8 w-8 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">
+                  {isCurrentWeek ? '本周还没有工作记录' : '该周暂无工作记录'}
+                </p>
+                {isCurrentWeek && (
+                  <Button size="sm" onClick={ensureTargetWeekLog}>
+                    <NotebookPen className="mr-1.5 h-3.5 w-3.5" /> 创建本周记录
+                  </Button>
+                )}
               </div>
             )}
           </CardContent>
