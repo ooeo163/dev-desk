@@ -120,13 +120,7 @@ export default function DashboardPage() {
     s.setHours(0, 0, 0, 0); e.setHours(23, 59, 59, 999);
     return targetMonday.getTime() === s.getTime() && targetSunday.getTime() === e.getTime();
   });
-  // Keep currentWeekLog for backward compatibility in save handlers
-  const currentWeekLog = isCurrentWeek ? targetWeekLog : workLogs.find((log) => {
-    const now = new Date();
-    const s = new Date(log.weekStart); const e = new Date(log.weekEnd);
-    s.setHours(0, 0, 0, 0); e.setHours(23, 59, 59, 999);
-    return now >= s && now <= e;
-  });
+
 
   useEffect(() => {
     if (targetWeekLog) {
@@ -147,24 +141,24 @@ export default function DashboardPage() {
   }
 
   const saveWlProject = useCallback(async () => {
-    if (!currentWeekLog) return;
+    if (!targetWeekLog) return;
     setWlSaving(true);
     try {
-      await updateWorkLog(currentWeekLog.id, { projectProgress: wlProject });
+      await updateWorkLog(targetWeekLog.id, { projectProgress: wlProject });
       queryClient.invalidateQueries({ queryKey: ['work-logs'] });
     } catch { toast.error('保存失败'); }
     finally { setWlSaving(false); }
-  }, [currentWeekLog, wlProject, queryClient]);
+  }, [targetWeekLog, wlProject, queryClient]);
 
   const saveWlTask = useCallback(async () => {
-    if (!currentWeekLog) return;
+    if (!targetWeekLog) return;
     setWlSaving(true);
     try {
-      await updateWorkLog(currentWeekLog.id, { taskDetails: wlTask });
+      await updateWorkLog(targetWeekLog.id, { taskDetails: wlTask });
       queryClient.invalidateQueries({ queryKey: ['work-logs'] });
     } catch { toast.error('保存失败'); }
     finally { setWlSaving(false); }
-  }, [currentWeekLog, wlTask, queryClient]);
+  }, [targetWeekLog, wlTask, queryClient]);
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
