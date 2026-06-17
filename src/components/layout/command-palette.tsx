@@ -11,13 +11,13 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { KeyRound, CheckSquare, Plus, Lock, Sun, Moon, NotebookPen } from 'lucide-react';
+import { KeyRound, CheckSquare, Plus, Lock, Sun, Moon, NotebookPen, Copy, Key, Check } from 'lucide-react';
 import { EmptySearch } from '@/components/ui/illustrations';
 import { useTheme } from 'next-themes';
 import { useCommandPalette } from '@/hooks/use-command-palette';
 import { useVaultStore } from '@/store/vault';
 import { lockVault } from '@/actions/auth';
-import { getCredentials } from '@/actions/credentials';
+import { getCredentials, getCredentialById } from '@/actions/credentials';
 import { getTasks } from '@/actions/tasks';
 import { toast } from 'sonner';
 import { CredentialDetail } from '@/components/vault/credential-detail';
@@ -78,12 +78,37 @@ export function CommandPalette({
   } | null>(null);
 
   const [taskDetailOpen, setTaskDetailOpen] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editTask, setEditTask] = useState<{
     id: string; title: string; description: string | null;
     status: string; priority: number; credentialId: string | null;
   } | null>(null);
+
+  async function handleCopySecret(e: React.MouseEvent, credId: string, field: 'password' | 'apiKey') {
+    e.stopPropagation();
+    const dekBase64 = useVaultStore.getState().getDekBase64();
+    if (!dekBase64) {
+      toast.error('无法获取解密密钥');
+      return;
+    }
+    try {
+      const cred = await getCredentialById(credId, dekBase64, [field]);
+      const value = cred?.[field] as string | null | undefined;
+      if (!value) {
+        toast.error(`${field === 'password' ? '密码' : '密钥'}为空`);
+        return;
+      }
+      await navigator.clipboard.writeText(value);
+      const key = `${credId}:${field}`;
+      setCopiedField(key);
+      toast.success(`已复制${field === 'password' ? '密码' : '密钥'}`);
+      setTimeout(() => setCopiedField((prev) => (prev === key ? null : prev)), 2000);
+    } catch {
+      toast.error('复制失败');
+    }
+  }
 
   function handleSelect(action: string) {
     setIsOpen(false);
@@ -152,9 +177,9 @@ export function CommandPalette({
 
   return (
     <>
-      <CommandDialog open={isOpen} onOpenChange={setIsOpen} className="sm:max-w-3xl">
+      <CommandDialog open={isOpen} onOpenChange={setIsOpen} className="sm:max-w-lg">
         <CommandInput placeholder="搜索凭证、任务或操作..." />
-        <CommandList className="max-h-[32rem]">
+        <CommandList className="max-h-[20rem]">
           <CommandEmpty>
             <EmptySearch className="mx-auto h-12 w-12 text-muted-foreground/30 mb-2" />
             没有找到结果
@@ -191,11 +216,45 @@ export function CommandPalette({
                   value={`cred:${cred.id}:${cred.title} ${cred.username ?? ''}`}
                   onSelect={() => handleSelect(`cred:${cred.id}`)}
                 >
-                  <KeyRound className="mr-2 h-4 w-4" />
-                  <span>{cred.title}</span>
-                  {cred.username && (
-                    <span className="ml-2 text-xs text-muted-foreground">{cred.username}</span>
-                  )}
+                  <KeyRound className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="flex-1 min-w-0 truncate">
+                    {cred.title}
+                    {cred.username && (
+                      <span className="ml-2 text-xs text-muted-foreground">{cred.username}</span>
+                    )}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1 w-12 justify-end">
+                    {cred.hasPassword && (
+                      <button
+                        type="button"
+                        className="p-1 rounded hover:bg-accent/80 transition-colors"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => handleCopySecret(e, cred.id, 'password')}
+                        title="复制密码"
+                      >
+                        {copiedField === `${cred.id}:password` ? (
+                          <Check className="h-3.5 w-3.5 text-green-500" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                        )}
+                      </button>
+                    )}
+                    {cred.hasApiKey && (
+                      <button
+                        type="button"
+                        className="p-1 rounded hover:bg-accent/80 transition-colors"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => handleCopySecret(e, cred.id, 'apiKey')}
+                        title="复制密钥"
+                      >
+                        {copiedField === `${cred.id}:apiKey` ? (
+                          <Check className="h-3.5 w-3.5 text-green-500" />
+                        ) : (
+                          <Key className="h-3.5 w-3.5 text-muted-foreground" />
+                        )}
+                      </button>
+                    )}
+                  </span>
                 </CommandItem>
               ))}
             </CommandGroup>

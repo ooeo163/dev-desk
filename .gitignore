@@ -41,9 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 # DevVault
-data/vault.db
-data/vault.db-wal
-data/vault.db-shm
+data/
 .drizzle/
 
 AGENTS.md*
