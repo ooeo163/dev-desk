@@ -7,6 +7,12 @@ import { createTaskSchema, updateTaskSchema, taskStatusSchema } from '@/lib/vali
 import { eq, desc, count } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import type { TaskStatus } from '@/lib/validation';
+import {
+  createWorkbook,
+  addSheetWithColumns,
+  formatDateCN,
+  workbookToUint8Array,
+} from '@/lib/excel-export';
 
 export async function createTask(
   input: Record<string, unknown>
@@ -131,4 +137,61 @@ export async function deleteTask(id: string): Promise<{ success: boolean }> {
   revalidatePath('/dashboard/tasks');
   revalidatePath('/dashboard');
   return { success: true };
+}
+
+const statusLabels: Record<string, string> = {
+  todo: '待办',
+  in_progress: '进行中',
+  done: '已完成',
+};
+
+const priorityLabels: Record<number, string> = {
+  0: '无',
+  1: '低',
+  2: '中',
+  3: '高',
+};
+
+/**
+ * Export all tasks as an Excel workbook.
+ */
+export async function exportTasks(): Promise<Uint8Array> {
+  const rows = db
+    .select({
+      id: tasks.id,
+      title: tasks.title,
+      description: tasks.description,
+      status: tasks.status,
+      priority: tasks.priority,
+      credentialId: tasks.credentialId,
+      createdAt: tasks.createdAt,
+      credentialTitle: credentials.title,
+    })
+    .from(tasks)
+    .leftJoin(credentials, eq(tasks.credentialId, credentials.id))
+    .orderBy(desc(tasks.createdAt))
+    .all();
+
+  const wb = createWorkbook();
+  const ws = addSheetWithColumns(wb, '任务管理', [
+    { header: '标题', key: 'title', width: 25 },
+    { header: '描述', key: 'description', width: 40 },
+    { header: '状态', key: 'status', width: 12 },
+    { header: '优先级', key: 'priority', width: 10 },
+    { header: '关联凭证', key: 'credentialTitle', width: 20 },
+    { header: '创建时间', key: 'createdAt', width: 20 },
+  ]);
+
+  for (const row of rows) {
+    ws.addRow({
+      title: row.title,
+      description: row.description?.replace(/<[^>]+>/g, '') ?? '',
+      status: statusLabels[row.status ?? 'todo'] ?? row.status,
+      priority: priorityLabels[row.priority ?? 0] ?? String(row.priority),
+      credentialTitle: row.credentialTitle ?? '',
+      createdAt: formatDateCN(row.createdAt),
+    });
+  }
+
+  return workbookToUint8Array(wb);
 }

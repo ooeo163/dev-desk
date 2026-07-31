@@ -31,9 +31,11 @@ import {
   deleteWorkLog,
   getOrCreateCurrentWeekWorkLog,
   updateWorkLog,
+  exportWorkLogs,
 } from '@/actions/work-logs';
 import { WorkLogDialog } from '@/components/vault/work-log-dialog';
 import { WorkLogDetail } from '@/components/vault/work-log-detail';
+import { ExportButton } from '@/components/vault/export-button';
 
 function formatDateRange(start: Date, end: Date): string {
   const s = new Date(start);
@@ -248,9 +250,15 @@ export default function WorkLogsPage() {
       {/* Desktop Header */}
       <div className="hidden lg:flex shrink-0 items-center justify-between px-6 pt-4 pb-2">
         <h1 className="text-lg font-bold tracking-tight">工作记录</h1>
-        <Button size="sm" onClick={handleCreate}>
-          <NotebookPen className="mr-1.5 h-3.5 w-3.5" /> 新建记录
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            onExport={exportWorkLogs}
+            filename="工作记录"
+          />
+          <Button size="sm" onClick={handleCreate}>
+            <NotebookPen className="mr-1.5 h-3.5 w-3.5" /> 新建记录
+          </Button>
+        </div>
       </div>
 
       {/* Desktop: left-right split */}
@@ -375,9 +383,16 @@ export default function WorkLogsPage() {
         {/* Mobile Header */}
         <div className="flex items-center justify-between px-4 pt-3 pb-2">
           <h1 className="text-lg font-bold tracking-tight">工作记录</h1>
-          <Button size="sm" onClick={handleCreate}>
-            <NotebookPen className="mr-1.5 h-3.5 w-3.5" /> 新建记录
-          </Button>
+          <div className="flex items-center gap-2">
+            <ExportButton
+              onExport={exportWorkLogs}
+              filename="工作记录"
+              label=""
+            />
+            <Button size="sm" onClick={handleCreate}>
+              <NotebookPen className="mr-1.5 h-3.5 w-3.5" /> 新建记录
+            </Button>
+          </div>
         </div>
 
         {/* Mobile Editor */}

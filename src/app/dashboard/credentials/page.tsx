@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Plus, Search, KeyRound, User, Check, Key, Tags, Copy } from 'lucide-react';
+import { Plus, Search, KeyRound, User, Check, Key, Tags, Copy, Download } from 'lucide-react';
 import { EmptyVault, EmptySearch } from '@/components/ui/illustrations';
 import { toast } from 'sonner';
 import { getCredentials, getCredentialById } from '@/actions/credentials';
@@ -15,6 +15,7 @@ import { getTags } from '@/actions/tags';
 import { CredentialDialog } from '@/components/vault/credential-dialog';
 import { CredentialDetail } from '@/components/vault/credential-detail';
 import { TagManager } from '@/components/vault/tag-manager';
+import { ExportPasswordDialog } from '@/components/vault/export-password-dialog';
 import { useClipboard } from '@/hooks/use-clipboard';
 import { useVaultStore } from '@/store/vault';
 import {
@@ -45,6 +46,7 @@ export default function CredentialsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editCred, setEditCred] = useState<{
     id: string;
@@ -235,6 +237,9 @@ export default function CredentialsPage() {
           <p className="text-muted-foreground">安全存储和管理你的凭证信息</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setExportDialogOpen(true)}>
+            <Download className="mr-2 h-4 w-4" /> 导出
+          </Button>
           <Button variant="outline" onClick={() => setTagManagerOpen(true)}>
             <Tags className="mr-2 h-4 w-4" /> 标签管理
           </Button>
@@ -493,6 +498,12 @@ export default function CredentialsPage() {
       <TagManager
         open={tagManagerOpen}
         onOpenChange={handleTagManagerClose}
+      />
+
+      {/* Export Password Dialog */}
+      <ExportPasswordDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
       />
     </div>
   );

@@ -6,6 +6,13 @@ import { workLogs } from '@/lib/db/schema';
 import { createWorkLogSchema, updateWorkLogSchema } from '@/lib/validation';
 import { eq, and, desc, gte, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import {
+  createWorkbook,
+  addSheetWithColumns,
+  formatDateCN,
+  formatDateShort,
+  workbookToUint8Array,
+} from '@/lib/excel-export';
 
 function getWeekRange(date: Date): { start: Date; end: Date } {
   const d = new Date(date);
@@ -144,4 +151,38 @@ export async function deleteWorkLog(id: string): Promise<{ success: boolean }> {
 
   revalidatePath('/dashboard/work-logs');
   return { success: true };
+}
+
+/**
+ * Export all work logs as an Excel workbook.
+ */
+export async function exportWorkLogs(): Promise<Uint8Array> {
+  const rows = db
+    .select()
+    .from(workLogs)
+    .orderBy(desc(workLogs.weekStart))
+    .all();
+
+  const wb = createWorkbook();
+  const ws = addSheetWithColumns(wb, '工作记录', [
+    { header: '周开始', key: 'weekStart', width: 15 },
+    { header: '周结束', key: 'weekEnd', width: 15 },
+    { header: '项目', key: 'projectProgress', width: 40 },
+    { header: '任务详情', key: 'taskDetails', width: 50 },
+    { header: '创建时间', key: 'createdAt', width: 20 },
+    { header: '更新时间', key: 'updatedAt', width: 20 },
+  ]);
+
+  for (const row of rows) {
+    ws.addRow({
+      weekStart: formatDateShort(row.weekStart),
+      weekEnd: formatDateShort(row.weekEnd),
+      projectProgress: row.projectProgress ?? '',
+      taskDetails: row.taskDetails ?? '',
+      createdAt: formatDateCN(row.createdAt),
+      updatedAt: formatDateCN(row.updatedAt),
+    });
+  }
+
+  return workbookToUint8Array(wb);
 }

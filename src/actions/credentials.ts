@@ -2,12 +2,18 @@
 
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
-import { credentials, tasks } from '@/lib/db/schema';
+import { credentials, tasks, tags } from '@/lib/db/schema';
 import { encrypt, decrypt } from '@/lib/crypto';
 import { createCredentialSchema, updateCredentialSchema } from '@/lib/validation';
 import { eq, desc } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { base64ToDek } from '@/lib/client-crypto';
+import {
+  createWorkbook,
+  addSheetWithColumns,
+  formatDateCN,
+  workbookToUint8Array,
+} from '@/lib/excel-export';
 
 /**
  * Create a new credential with encrypted sensitive fields.
@@ -159,4 +165,66 @@ export async function deleteCredential(id: string): Promise<{ success: boolean }
   revalidatePath('/dashboard/credentials');
   revalidatePath('/dashboard');
   return { success: true };
+}
+
+/**
+ * Export all credentials as an Excel workbook (decrypted).
+ */
+export async function exportCredentials(dekBase64: string): Promise<Uint8Array> {
+  const dek = Buffer.from(base64ToDek(dekBase64));
+
+  const rows = db.select().from(credentials).orderBy(desc(credentials.updatedAt)).all();
+  const allTags = db.select().from(tags).all();
+  const tagMap = new Map(allTags.map((t) => [t.id, t.name]));
+
+  const wb = createWorkbook();
+  const ws = addSheetWithColumns(wb, '凭证管理', [
+    { header: '标题', key: 'title', width: 25 },
+    { header: '用户名', key: 'username', width: 20 },
+    { header: '地址', key: 'address', width: 30 },
+    { header: '密码', key: 'password', width: 25 },
+    { header: 'API Key', key: 'apiKey', width: 30 },
+    { header: 'TOTP密钥', key: 'totpSecret', width: 20 },
+    { header: '备注', key: 'notes', width: 40 },
+    { header: '标签', key: 'tags', width: 20 },
+    { header: '创建时间', key: 'createdAt', width: 20 },
+    { header: '更新时间', key: 'updatedAt', width: 20 },
+  ]);
+
+  for (const row of rows) {
+    let password = '';
+    if (row.passwordCipher) {
+      try { password = decrypt(row.passwordCipher, dek); } catch { password = ''; }
+    }
+    let apiKey = '';
+    if (row.apiKeyCipher) {
+      try { apiKey = decrypt(row.apiKeyCipher, dek); } catch { apiKey = ''; }
+    }
+    let totpSecret = '';
+    if (row.totpSecretCipher) {
+      try { totpSecret = decrypt(row.totpSecretCipher, dek); } catch { totpSecret = ''; }
+    }
+    let notes = '';
+    if (row.notes) {
+      try { notes = decrypt(row.notes, dek); } catch { notes = ''; }
+    }
+
+    const tagIds: string[] = row.tags ? JSON.parse(row.tags) : [];
+    const tagNames = tagIds.map((id) => tagMap.get(id) || id).join(', ');
+
+    ws.addRow({
+      title: row.title,
+      username: row.username ?? '',
+      address: row.address ?? '',
+      password,
+      apiKey,
+      totpSecret,
+      notes,
+      tags: tagNames,
+      createdAt: formatDateCN(row.createdAt),
+      updatedAt: formatDateCN(row.updatedAt),
+    });
+  }
+
+  return workbookToUint8Array(wb);
 }

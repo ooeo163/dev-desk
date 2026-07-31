@@ -34,9 +34,10 @@ import {
 import { Plus, MoreVertical, Trash2, Pencil } from 'lucide-react';
 import { EmptyTodo, EmptyInProgress, EmptyDone } from '@/components/ui/illustrations';
 import { toast } from 'sonner';
-import { getTasks, updateTaskStatus, deleteTask } from '@/actions/tasks';
+import { getTasks, updateTaskStatus, deleteTask, exportTasks } from '@/actions/tasks';
 import { TaskDialog } from '@/components/vault/task-dialog';
 import { TaskDetail } from '@/components/vault/task-detail';
+import { ExportButton } from '@/components/vault/export-button';
 import { Pagination } from '@/components/ui/pagination';
 import type { TaskStatus } from '@/lib/validation';
 import { cn } from '@/lib/utils';
@@ -353,9 +354,15 @@ export default function TasksPage() {
           <h1 className="text-2xl font-bold tracking-tight">任务管理</h1>
           <p className="text-sm sm:text-base text-muted-foreground hidden sm:block">拖拽卡片可快速切换状态</p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="mr-2 h-4 w-4" /> 新建任务
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportButton
+            onExport={exportTasks}
+            filename="任务管理"
+          />
+          <Button onClick={handleCreate}>
+            <Plus className="mr-2 h-4 w-4" /> 新建任务
+          </Button>
+        </div>
       </div>
 
       {/* Mobile Status Tabs */}

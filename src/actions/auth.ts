@@ -147,6 +147,29 @@ export async function verifySession(): Promise<boolean> {
   }
 }
 
+/**
+ * Verify master password and return KDF salt (for export flows).
+ */
+export async function verifyPasswordForExport(
+  password: string
+): Promise<{ success: boolean; kdfSalt?: string; error?: string }> {
+  const hashRow = db.select().from(vaultMeta).where(eq(vaultMeta.key, 'password_hash')).get();
+  if (!hashRow) {
+    return { success: false, error: '工作台未初始化' };
+  }
+
+  if (!verifyPassword(password, hashRow.value)) {
+    return { success: false, error: '主密码错误' };
+  }
+
+  const saltRow = db.select().from(vaultMeta).where(eq(vaultMeta.key, 'kdf_salt')).get();
+  if (!saltRow) {
+    return { success: false, error: 'KDF 盐值缺失' };
+  }
+
+  return { success: true, kdfSalt: saltRow.value };
+}
+
 // ── Internal helpers ──────────────────────────────────
 
 async function setSessionCookie() {
